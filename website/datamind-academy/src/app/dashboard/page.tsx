@@ -4,9 +4,29 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { SUBJECTS } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
-// Mock user data
-const USER = { name: "Ishant", xp: 1240, streak: 7, level: 12 };
+type UserData = { name: string; email: string; xp: number; streak: number; level: number };
+
+function useUser() {
+  const [user, setUser] = useState<UserData | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const stored = localStorage.getItem("datamind_user");
+    if (stored) {
+      setUser(JSON.parse(stored));
+    } else {
+      router.push("/login");
+    }
+  }, [router]);
+
+  return user;
+}
+
+// Default fallback while loading
+const DEFAULT_USER = { name: "Learner", xp: 0, streak: 0, level: 1 };
 
 const ACTIVE_COURSES = [
   { subjectId: "python", progress: 45, currentLesson: "Writing Your First Function", moduleNum: 3, lessonNum: 2 },
@@ -30,6 +50,19 @@ const ACHIEVEMENTS = [
 ];
 
 export default function DashboardPage() {
+  const user = useUser();
+  const USER = user || DEFAULT_USER;
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-4xl mb-4 animate-pulse">🧠</div>
+          <p className="text-muted-foreground">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen">
       {/* Top bar */}

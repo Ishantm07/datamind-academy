@@ -16,10 +16,21 @@ const NAV_LINKS = [
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [user, setUser] = useState<{ name: string } | null>(null);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
+
+    const storedUser = localStorage.getItem("datamind_user");
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        console.error("Failed to parse user", e);
+      }
+    }
+
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
@@ -68,21 +79,45 @@ export default function Navbar() {
 
           {/* CTA Buttons */}
           <div className="hidden md:flex items-center gap-3">
-            <Link
-              href="/login"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-4 py-2"
-            >
-              Log in
-            </Link>
-            <Link
-              href="/signup"
-              className="group relative rounded-xl px-5 py-2.5 text-sm font-semibold text-white overflow-hidden transition-all"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-600 transition-opacity group-hover:opacity-90" />
-              <div className="absolute inset-0 bg-gradient-to-r from-indigo-400 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-30 transition-opacity bg-[radial-gradient(circle_at_50%_-20%,rgba(255,255,255,0.5),transparent_70%)]" />
-              <span className="relative">Start Free →</span>
-            </Link>
+            {user ? (
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/dashboard"
+                  className="group relative rounded-xl px-5 py-2.5 text-sm font-semibold text-white overflow-hidden transition-all"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-600 transition-opacity group-hover:opacity-90" />
+                  <span className="relative">Dashboard →</span>
+                </Link>
+                <button
+                  onClick={() => {
+                    localStorage.removeItem("datamind_user");
+                    setUser(null);
+                    window.location.href = "/";
+                  }}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-4 py-2"
+                >
+                  Log in
+                </Link>
+                <Link
+                  href="/signup"
+                  className="group relative rounded-xl px-5 py-2.5 text-sm font-semibold text-white overflow-hidden transition-all"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-600 transition-opacity group-hover:opacity-90" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-400 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-30 transition-opacity bg-[radial-gradient(circle_at_50%_-20%,rgba(255,255,255,0.5),transparent_70%)]" />
+                  <span className="relative">Start Free →</span>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Hamburger */}
