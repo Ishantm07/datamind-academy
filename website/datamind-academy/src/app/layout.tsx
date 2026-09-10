@@ -13,8 +13,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen bg-background antialiased">{children}</body>
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <body className="min-h-screen bg-background antialiased">
+        {/* Animated gradient mesh background — always visible behind content */}
+        <div className="gradient-mesh" aria-hidden="true" />
+        {children}
+      </body>
     </html>
   );
 }

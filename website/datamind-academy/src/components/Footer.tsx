@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { motion } from "framer-motion";
 
 const FOOTER_LINKS = {
   Learn: [
@@ -30,19 +33,24 @@ const FOOTER_LINKS = {
 
 export default function Footer() {
   return (
-    <footer className="border-t border-border bg-muted/30 mt-auto">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+    <footer className="relative border-t border-white/5 mt-auto">
+      {/* Subtle gradient line at the top of footer */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent" />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         {/* Top: logo + links */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-10 mb-12">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-10 mb-14">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
-            <Link href="/" className="flex items-center gap-2 mb-4">
-              <span className="text-2xl">🧠</span>
-              <span className="font-bold text-base">
-                DataMind <span className="text-primary">Academy</span>
+            <Link href="/" className="flex items-center gap-2.5 mb-5">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                <span className="text-white text-sm font-bold">D</span>
+              </div>
+              <span className="font-bold text-sm">
+                DataMind <span className="text-gradient">Academy</span>
               </span>
             </Link>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground leading-relaxed">
               Free, structured, project-based learning for the data age.
             </p>
           </div>
@@ -50,15 +58,15 @@ export default function Footer() {
           {/* Link columns */}
           {Object.entries(FOOTER_LINKS).map(([category, links]) => (
             <div key={category}>
-              <h4 className="text-sm font-semibold text-foreground mb-3">
+              <h4 className="text-xs font-semibold text-white uppercase tracking-widest mb-4">
                 {category}
               </h4>
-              <ul className="space-y-2">
+              <ul className="space-y-2.5">
                 {links.map((link) => (
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-sm text-muted-foreground hover:text-indigo-400 transition-colors"
                     >
                       {link.label}
                     </Link>
@@ -70,12 +78,12 @@ export default function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-border pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
+        <div className="border-t border-white/5 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
           <span>© {new Date().getFullYear()} DataMind Academy. All rights reserved.</span>
-          <div className="flex gap-4">
-            <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
-            <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
-            <Link href="/sitemap" className="hover:text-foreground transition-colors">Sitemap</Link>
+          <div className="flex gap-5">
+            <Link href="/privacy" className="hover:text-indigo-400 transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-indigo-400 transition-colors">Terms</Link>
+            <Link href="/sitemap" className="hover:text-indigo-400 transition-colors">Sitemap</Link>
           </div>
         </div>
       </div>
