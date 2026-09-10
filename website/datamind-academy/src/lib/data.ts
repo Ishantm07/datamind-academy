@@ -1,0 +1,113 @@
+import type { Subject, Track } from "./types";
+
+export const SUBJECTS: Subject[] = [
+  {
+    id: "sql",
+    title: "SQL",
+    description:
+      "Master the language of databases. Query, filter, join, and analyze data from relational databases used by every major company.",
+    icon: "🗄️",
+    color: "bg-blue-50 dark:bg-blue-950",
+    textColor: "text-blue-700 dark:text-blue-300",
+    borderColor: "border-blue-200 dark:border-blue-800",
+    levels: ["Beginner", "Intermediate", "Advanced"],
+    topicsCount: 54,
+    estimatedHours: 40,
+    prerequisites: [],
+  },
+  {
+    id: "powerbi",
+    title: "Power BI",
+    description:
+      "Transform raw data into stunning, interactive dashboards. Learn DAX, data modeling, and enterprise BI reporting.",
+    icon: "📊",
+    color: "bg-yellow-50 dark:bg-yellow-950",
+    textColor: "text-yellow-700 dark:text-yellow-300",
+    borderColor: "border-yellow-200 dark:border-yellow-800",
+    levels: ["Beginner", "Intermediate", "Advanced"],
+    topicsCount: 54,
+    estimatedHours: 45,
+    prerequisites: ["sql"],
+  },
+  {
+    id: "python",
+    title: "Python",
+    description:
+      "The world's most versatile programming language. From scripts to data pipelines — Python is the foundation for ML and AI.",
+    icon: "🐍",
+    color: "bg-green-50 dark:bg-green-950",
+    textColor: "text-green-700 dark:text-green-300",
+    borderColor: "border-green-200 dark:border-green-800",
+    levels: ["Beginner", "Intermediate", "Advanced"],
+    topicsCount: 60,
+    estimatedHours: 60,
+    prerequisites: [],
+  },
+  {
+    id: "ml",
+    title: "Machine Learning",
+    description:
+      "Build models that learn from data. Regression, classification, clustering, and production ML pipelines with Scikit-learn.",
+    icon: "🤖",
+    color: "bg-purple-50 dark:bg-purple-950",
+    textColor: "text-purple-700 dark:text-purple-300",
+    borderColor: "border-purple-200 dark:border-purple-800",
+    levels: ["Beginner", "Intermediate", "Advanced"],
+    topicsCount: 60,
+    estimatedHours: 80,
+    prerequisites: ["python"],
+  },
+  {
+    id: "ai",
+    title: "Artificial Intelligence",
+    description:
+      "Deep learning, transformers, LLMs, and AI agents. Build the technology powering the next generation of intelligent systems.",
+    icon: "🧠",
+    color: "bg-red-50 dark:bg-red-950",
+    textColor: "text-red-700 dark:text-red-300",
+    borderColor: "border-red-200 dark:border-red-800",
+    levels: ["Beginner", "Intermediate", "Advanced"],
+    topicsCount: 54,
+    estimatedHours: 100,
+    prerequisites: ["python", "ml"],
+  },
+];
+
+export const TRACKS: Track[] = [
+  {
+    id: "data-analyst",
+    title: "Data Analyst",
+    description: "Query databases and build dashboards that drive decisions.",
+    subjects: ["sql", "powerbi", "python"],
+    durationMonths: 6,
+    goal: "Business reporting & analytics role",
+    icon: "📈",
+  },
+  {
+    id: "data-scientist",
+    title: "Data Scientist",
+    description: "Build predictive models and extract insights from complex data.",
+    subjects: ["python", "ml", "ai"],
+    durationMonths: 10,
+    goal: "Data science / ML engineer role",
+    icon: "🔬",
+  },
+  {
+    id: "ai-engineer",
+    title: "AI Engineer",
+    description: "Design and deploy LLMs, agents, and production AI systems.",
+    subjects: ["python", "ml", "ai"],
+    durationMonths: 14,
+    goal: "LLM / AI systems engineer role",
+    icon: "🤖",
+  },
+  {
+    id: "bi-developer",
+    title: "BI Developer",
+    description: "Master SQL and Power BI for enterprise data visualization.",
+    subjects: ["sql", "powerbi"],
+    durationMonths: 5,
+    goal: "BI developer / reporting analyst role",
+    icon: "📊",
+  },
+];
