@@ -114,59 +114,42 @@ export default function TheoryPanel({
 
             {/* Narrative Problem Description */}
             <div className="prose prose-invert max-w-none text-sm text-muted-foreground leading-relaxed space-y-4">
-              <p>
-                Generate an alphabetically ordered list of all names in the <code className="text-indigo-300">EMPLOYEES</code> table,
-                followed by the first letter of each profession in parentheses (e.g., <code className="text-amber-300">Name(P)</code>).
-              </p>
-              <p>
-                Next, query the count of occurrences of each occupation and output them formatted as:
-                <br />
-                <code className="text-emerald-300">There are a total of [count] [occupation]s.</code>
-              </p>
+              <p className="whitespace-pre-wrap">{problemStatement || "Solve the challenge using the code editor on the right."}</p>
             </div>
 
             {/* Sample Input Preview */}
-            <div className="glass-card rounded-xl p-4 border border-white/5 space-y-2">
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider">Sample Input:</h4>
-              <pre className="bg-black/40 p-3 rounded-lg text-xs font-mono text-gray-300 overflow-x-auto">
-{`+-----------+------------+--------+
-| Name      | Occupation | Salary |
-+-----------+------------+--------+
-| Samantha  | Doctor     | 95000  |
-| Julia     | Actor      | 82000  |
-| Maria     | Actor      | 88000  |
-| Meera     | Singer     | 72000  |
-| Ashely    | Professor  | 91000  |
-+-----------+------------+--------+`}
-              </pre>
-            </div>
+            {sampleInput && (
+              <div className="glass-card rounded-xl p-4 border border-white/5 space-y-2">
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider">Sample Input:</h4>
+                <pre className="bg-black/40 p-3 rounded-lg text-xs font-mono text-gray-300 overflow-x-auto whitespace-pre-wrap">
+                  {sampleInput}
+                </pre>
+              </div>
+            )}
 
             {/* Sample Output Preview */}
-            <div className="glass-card rounded-xl p-4 border border-white/5 space-y-2">
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider">Sample Output:</h4>
-              <pre className="bg-black/40 p-3 rounded-lg text-xs font-mono text-emerald-400 overflow-x-auto">
-{`Ashely(P)
-Julia(A)
-Maria(A)
-Meera(S)
-Samantha(D)
-There are a total of 2 actors.
-There are a total of 1 doctor.
-There are a total of 1 professor.
-There are a total of 1 singer.`}
-              </pre>
-            </div>
+            {sampleOutput && (
+              <div className="glass-card rounded-xl p-4 border border-white/5 space-y-2">
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider">Sample Output:</h4>
+                <pre className="bg-black/40 p-3 rounded-lg text-xs font-mono text-emerald-400 overflow-x-auto whitespace-pre-wrap">
+                  {sampleOutput}
+                </pre>
+              </div>
+            )}
 
             {/* Constraints */}
-            <div className="border border-amber-500/20 bg-amber-500/5 rounded-xl p-4 space-y-1">
-              <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                <span>⚠️</span> Constraints:
-              </h4>
-              <ul className="text-xs text-muted-foreground list-disc pl-5 space-y-1">
-                <li>Occupation names in the summary must be in lowercase.</li>
-                <li>Results must be sorted alphabetically by occupation count ascending, then by occupation name.</li>
-              </ul>
-            </div>
+            {constraints && constraints.length > 0 && (
+              <div className="border border-amber-500/20 bg-amber-500/5 rounded-xl p-4 space-y-1">
+                <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <span>⚠️</span> Constraints:
+                </h4>
+                <ul className="text-xs text-muted-foreground list-disc pl-5 space-y-1">
+                  {constraints.map((c, i) => (
+                    <li key={i}>{c}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
 
@@ -177,52 +160,44 @@ There are a total of 1 singer.`}
               The following schema defines the tables available in the current database environment:
             </p>
 
-            <div className="glass-card rounded-xl p-5 border border-white/5 space-y-4">
-              <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                <span className="font-mono text-sm font-bold text-indigo-400">EMPLOYEES Table</span>
-                <span className="text-[10px] text-muted-foreground uppercase font-mono">5 Rows</span>
-              </div>
-              <div className="space-y-2 font-mono text-xs">
-                <div className="flex justify-between text-muted-foreground border-b border-white/5 pb-1">
-                  <span>Column Name</span>
-                  <span>Data Type</span>
+            {tableSchema ? (
+              <div className="glass-card rounded-xl p-5 border border-white/5 space-y-4">
+                <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                  <span className="font-mono text-sm font-bold text-indigo-400">{tableSchema.tableName} Table</span>
+                  <span className="text-[10px] text-muted-foreground uppercase font-mono">{tableSchema.columns.length} Columns</span>
                 </div>
-                <div className="flex justify-between text-white">
-                  <span>ID</span>
-                  <span className="text-amber-400">INTEGER (PK)</span>
-                </div>
-                <div className="flex justify-between text-white">
-                  <span>Name</span>
-                  <span className="text-blue-400">VARCHAR(50)</span>
-                </div>
-                <div className="flex justify-between text-white">
-                  <span>Occupation</span>
-                  <span className="text-blue-400">VARCHAR(50)</span>
-                </div>
-                <div className="flex justify-between text-white">
-                  <span>Salary</span>
-                  <span className="text-emerald-400">INTEGER</span>
+                <div className="space-y-2 font-mono text-xs">
+                  <div className="flex justify-between text-muted-foreground border-b border-white/5 pb-1">
+                    <span>Column Name</span>
+                    <span>Data Type</span>
+                  </div>
+                  {tableSchema.columns.map((col, i) => (
+                    <div key={i} className="flex justify-between text-white">
+                      <span>{col.name}</span>
+                      <span className="text-amber-400">{col.type}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="text-xs text-muted-foreground italic">Standard environment schema active.</div>
+            )}
           </div>
         )}
 
         {activeTab === "hints" && (
           <div className="space-y-4">
             <h3 className="text-lg font-bold text-white">Need a Nudge?</h3>
-            <div className="glass-card rounded-xl p-4 border border-indigo-500/20 bg-indigo-500/5">
-              <h4 className="text-xs font-bold text-indigo-400 mb-1">💡 Hint 1: Concatenation</h4>
-              <p className="text-xs text-muted-foreground">
-                Use <code className="text-indigo-300">CONCAT(Name, &apos;(&apos;, SUBSTR(Occupation, 1, 1), &apos;)&apos;)</code> in SQL to format strings.
-              </p>
-            </div>
-            <div className="glass-card rounded-xl p-4 border border-indigo-500/20 bg-indigo-500/5">
-              <h4 className="text-xs font-bold text-indigo-400 mb-1">💡 Hint 2: Lowercase & Count</h4>
-              <p className="text-xs text-muted-foreground">
-                Use <code className="text-indigo-300">LOWER(Occupation)</code> combined with <code className="text-indigo-300">COUNT(*)</code> and <code className="text-indigo-300">GROUP BY Occupation</code>.
-              </p>
-            </div>
+            {hints && hints.length > 0 ? (
+              hints.map((h, i) => (
+                <div key={i} className="glass-card rounded-xl p-4 border border-indigo-500/20 bg-indigo-500/5">
+                  <h4 className="text-xs font-bold text-indigo-400 mb-1">💡 Hint {i + 1}</h4>
+                  <p className="text-xs text-muted-foreground font-mono">{h}</p>
+                </div>
+              ))
+            ) : (
+              <div className="text-xs text-muted-foreground italic">No hints available for this challenge.</div>
+            )}
           </div>
         )}
       </div>
