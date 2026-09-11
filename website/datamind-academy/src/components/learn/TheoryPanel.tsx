@@ -12,6 +12,12 @@ interface TheoryPanelProps {
   lessonTitle?: string;
   difficulty?: "EASY" | "MEDIUM" | "HARD";
   points?: number;
+  problemStatement?: string;
+  sampleInput?: string;
+  sampleOutput?: string;
+  constraints?: string[];
+  tableSchema?: { tableName: string; columns: { name: string; type: string }[] };
+  hints?: string[];
 }
 
 export default function TheoryPanel({
@@ -21,6 +27,12 @@ export default function TheoryPanel({
   lessonTitle = "The Occupations PADS Challenge",
   difficulty = "MEDIUM",
   points = 30,
+  problemStatement,
+  sampleInput,
+  sampleOutput,
+  constraints,
+  tableSchema,
+  hints,
 }: TheoryPanelProps) {
   const [activeTab, setActiveTab] = useState<"problem" | "input_schema" | "hints">("problem");
 

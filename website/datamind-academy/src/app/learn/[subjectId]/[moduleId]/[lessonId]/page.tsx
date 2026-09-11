@@ -1,5 +1,6 @@
 import CodeEditorPanel from "@/components/learn/CodeEditorPanel";
 import TheoryPanel from "@/components/learn/TheoryPanel";
+import { getChallenge } from "@/lib/curriculumData";
 
 export default function CoursePlayerPage({
   params,
@@ -10,12 +11,7 @@ export default function CoursePlayerPage({
   const moduleId = params.moduleId || "m1";
   const lessonId = params.lessonId || "lesson-1";
 
-  const initialSqlCode = `-- Write a query to format customer names and count occupations
-SELECT 
-  CONCAT(Name, '(', SUBSTR(Occupation, 1, 1), ')') AS formatted_name
-FROM EMPLOYEES
-ORDER BY Name ASC;
-`;
+  const challenge = getChallenge(subjectId, moduleId, lessonId);
 
   return (
     <main className="fixed inset-0 z-50 flex flex-col md:flex-row bg-background">
@@ -25,18 +21,24 @@ ORDER BY Name ASC;
           subjectId={subjectId}
           moduleId={moduleId}
           lessonId={lessonId}
-          lessonTitle={`The ${subjectId.toUpperCase()} Challenge (${lessonId})`}
-          difficulty="MEDIUM"
-          points={30}
+          lessonTitle={challenge.title}
+          difficulty={challenge.difficulty}
+          points={challenge.points}
+          problemStatement={challenge.problemStatement}
+          sampleInput={challenge.sampleInput}
+          sampleOutput={challenge.sampleOutput}
+          constraints={challenge.constraints}
+          tableSchema={challenge.tableSchema}
+          hints={challenge.hints}
         />
       </div>
 
       {/* Right Pane: Code Editor & HackerRank Test Cases (50% desktop) */}
       <div className="w-full md:w-1/2 h-1/2 md:h-full">
         <CodeEditorPanel
-          language={subjectId === "python" ? "python" : "sql"}
-          initialCode={initialSqlCode}
-          points={30}
+          language={challenge.language}
+          initialCode={challenge.initialCode}
+          points={challenge.points}
         />
       </div>
     </main>
