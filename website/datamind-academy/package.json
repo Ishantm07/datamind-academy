@@ -8,7 +8,11 @@
     "start": "next start",
     "lint": "next lint",
     "db:push": "prisma db push",
+    "db:seed": "prisma db seed",
     "db:studio": "prisma studio"
+  },
+  "prisma": {
+    "seed": "npx ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
   },
   "dependencies": {
     "next": "14.2.5",
@@ -38,6 +42,7 @@
   },
   "devDependencies": {
     "prisma": "^5.17.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5",
     "@types/node": "^20",
     "@types/react": "^18",
