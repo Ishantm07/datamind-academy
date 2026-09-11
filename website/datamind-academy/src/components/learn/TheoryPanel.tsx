@@ -18,6 +18,9 @@ interface TheoryPanelProps {
   constraints?: string[];
   tableSchema?: { tableName: string; columns: { name: string; type: string }[] };
   hints?: string[];
+  questionIndex?: number;
+  totalQuestions?: number;
+  onShuffleNewSession?: () => void;
 }
 
 export default function TheoryPanel({
@@ -33,6 +36,9 @@ export default function TheoryPanel({
   constraints,
   tableSchema,
   hints,
+  questionIndex = 1,
+  totalQuestions = 40,
+  onShuffleNewSession,
 }: TheoryPanelProps) {
   const [activeTab, setActiveTab] = useState<"problem" | "input_schema" | "hints">("problem");
 
@@ -53,12 +59,24 @@ export default function TheoryPanel({
             href={`/subjects/${subjectId}`}
             className="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
           >
-            ← Back to Syllabus
+            ← Back
           </Link>
+          <span className="text-xs font-bold text-indigo-400 bg-indigo-500/10 px-2.5 py-0.5 rounded-full border border-indigo-500/20 font-mono">
+            Question {questionIndex} of {totalQuestions}
+          </span>
         </div>
         
-        {/* Difficulty & XP Badge */}
+        {/* Difficulty, XP Badge & Shuffle New Pool */}
         <div className="flex items-center gap-2">
+          {onShuffleNewSession && (
+            <button
+              onClick={onShuffleNewSession}
+              className="text-[10px] font-bold text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 px-2.5 py-1 rounded-full border border-purple-500/20 transition-all flex items-center gap-1"
+              title="Generate a fresh randomized set of 40 questions"
+            >
+              <span>🔀</span> New 40 Set
+            </button>
+          )}
           <span
             className={cn(
               "text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider",

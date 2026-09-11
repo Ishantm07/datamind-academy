@@ -1,5 +1,9 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import CodeEditorPanel from "@/components/learn/CodeEditorPanel";
 import TheoryPanel from "@/components/learn/TheoryPanel";
+import { getOrSession40Questions, generate40QuestionSession, ShuffledChallengeSession } from "@/lib/sqlShuffleEngine";
 import { getChallenge } from "@/lib/curriculumData";
 
 export default function CoursePlayerPage({
@@ -11,7 +15,33 @@ export default function CoursePlayerPage({
   const moduleId = params.moduleId || "m1";
   const lessonId = params.lessonId || "lesson-1";
 
-  const challenge = getChallenge(subjectId, moduleId, lessonId);
+  // Parse numeric index from lessonId (e.g., "lesson-1" -> 1)
+  const lessonNum = parseInt(lessonId.replace(/\D/g, "") || "1", 10);
+
+  const [session, setSession] = useState<ShuffledChallengeSession | null>(null);
+
+  useEffect(() => {
+    if (subjectId === "sql") {
+      const sess = getOrSession40Questions();
+      setSession(sess);
+    }
+  }, [subjectId]);
+
+  const handleShuffleNewSession = () => {
+    const freshSession = generate40QuestionSession();
+    localStorage.setItem("datamind_sql_40_session", JSON.stringify(freshSession));
+    setSession(freshSession);
+  };
+
+  // Get current active question from the 40-question session or fallback to curriculum engine
+  let currentQuestion: any = null;
+
+  if (subjectId === "sql" && session && session.questions.length > 0) {
+    const qIndex = (lessonNum - 1) % session.questions.length;
+    currentQuestion = session.questions[qIndex];
+  } else {
+    currentQuestion = getChallenge(subjectId, moduleId, lessonId);
+  }
 
   return (
     <main className="fixed inset-0 z-50 flex flex-col md:flex-row bg-background">
@@ -21,24 +51,27 @@ export default function CoursePlayerPage({
           subjectId={subjectId}
           moduleId={moduleId}
           lessonId={lessonId}
-          lessonTitle={challenge.title}
-          difficulty={challenge.difficulty}
-          points={challenge.points}
-          problemStatement={challenge.problemStatement}
-          sampleInput={challenge.sampleInput}
-          sampleOutput={challenge.sampleOutput}
-          constraints={challenge.constraints}
-          tableSchema={challenge.tableSchema}
-          hints={challenge.hints}
+          lessonTitle={currentQuestion?.title || "SQL Challenge"}
+          difficulty={currentQuestion?.difficulty || "MEDIUM"}
+          points={currentQuestion?.points || 30}
+          problemStatement={currentQuestion?.problemStatement}
+          sampleInput={currentQuestion?.sampleInput}
+          sampleOutput={currentQuestion?.sampleOutput}
+          constraints={currentQuestion?.constraints}
+          tableSchema={currentQuestion?.tableSchema}
+          hints={currentQuestion?.hints}
+          questionIndex={Math.min(lessonNum, 40)}
+          totalQuestions={40}
+          onShuffleNewSession={subjectId === "sql" ? handleShuffleNewSession : undefined}
         />
       </div>
 
       {/* Right Pane: Code Editor & HackerRank Test Cases (50% desktop) */}
       <div className="w-full md:w-1/2 h-1/2 md:h-full">
         <CodeEditorPanel
-          language={challenge.language}
-          initialCode={challenge.initialCode}
-          points={challenge.points}
+          language={currentQuestion?.language || "sql"}
+          initialCode={currentQuestion?.initialCode || "-- Write your solution here\n"}
+          points={currentQuestion?.points || 30}
         />
       </div>
     </main>
