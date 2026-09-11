@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 
 interface TheoryPanelProps {
   subjectId?: string;
+  moduleId?: string;
+  lessonId?: string;
   lessonTitle?: string;
   difficulty?: "EASY" | "MEDIUM" | "HARD";
   points?: number;
@@ -14,11 +16,21 @@ interface TheoryPanelProps {
 
 export default function TheoryPanel({
   subjectId = "sql",
-  lessonTitle = "Occupations & Salary Analysis",
+  moduleId = "m1",
+  lessonId = "lesson-1",
+  lessonTitle = "The Occupations PADS Challenge",
   difficulty = "MEDIUM",
   points = 30,
 }: TheoryPanelProps) {
   const [activeTab, setActiveTab] = useState<"problem" | "input_schema" | "hints">("problem");
+
+  // Extract numeric lesson number from string like "lesson-1"
+  const currentNum = parseInt(lessonId.replace(/\D/g, "") || "1", 10);
+  const prevLessonNum = Math.max(1, currentNum - 1);
+  const nextLessonNum = currentNum + 1;
+
+  const prevHref = `/learn/${subjectId}/${moduleId}/lesson-${prevLessonNum}`;
+  const nextHref = `/learn/${subjectId}/${moduleId}/lesson-${nextLessonNum}`;
 
   return (
     <div className="flex flex-col h-full bg-background overflow-y-auto border-r border-white/5">
@@ -83,7 +95,7 @@ export default function TheoryPanel({
           <div className="space-y-6">
             <div>
               <span className="text-xs font-mono text-indigo-400 uppercase tracking-widest block mb-1">
-                Challenge 04 • Data Aggregations
+                Challenge 0{currentNum} • {subjectId.toUpperCase()} Track
               </span>
               <h1 className="text-2xl font-black text-white">{lessonTitle}</h1>
             </div>
@@ -203,14 +215,27 @@ There are a total of 1 singer.`}
         )}
       </div>
 
-      {/* Bottom Actions Bar */}
+      {/* Bottom Actions Bar with Working Navigation Links */}
       <div className="sticky bottom-0 p-4 border-t border-white/5 bg-background/95 backdrop-blur flex justify-between items-center">
-        <button className="text-xs font-medium text-muted-foreground hover:text-white transition-colors">
-          ← Previous Problem
-        </button>
-        <button className="flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-5 py-2 rounded-xl text-xs font-bold hover:opacity-90 transition-opacity shadow-lg shadow-indigo-500/25">
+        {currentNum > 1 ? (
+          <Link
+            href={prevHref}
+            className="text-xs font-semibold text-muted-foreground hover:text-white transition-colors flex items-center gap-1"
+          >
+            ← Previous Problem
+          </Link>
+        ) : (
+          <span className="text-xs font-semibold text-muted-foreground/30 cursor-not-allowed">
+            ← First Problem
+          </span>
+        )}
+
+        <Link
+          href={nextHref}
+          className="flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:opacity-90 transition-opacity shadow-lg shadow-indigo-500/25"
+        >
           Next Challenge →
-        </button>
+        </Link>
       </div>
     </div>
   );
