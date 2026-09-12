@@ -238,100 +238,176 @@ async function main() {
   });
 
   // ==========================================
-  // 4. PYTHON TRACK MODULES & LESSONS (5 Modules)
+  // 4. PYTHON TRACK MODULES & LESSONS (5 Modules based on Learning Python)
   // ==========================================
-  console.log("Creating Python Track Curriculum...");
+  console.log("Creating Python Track Curriculum (Learning Python Edition)...");
 
   const pyM1 = await prisma.module.create({
-    data: { subjectId: "python", title: "Module 1: Python Basics & Data Types", description: "Variables, strings, lists, dicts, control flow, and functions.", order: 1 },
+    data: {
+      subjectId: "python",
+      title: "Module 1: Python Data Model, Core Types & Dynamic Typing",
+      description: "Understand Python object references, memory management, numbers, strings, lists, dicts, tuples, and mutability.",
+      order: 1,
+    },
   });
   await prisma.lesson.createMany({
     data: [
       {
         moduleId: pyM1.id,
-        title: "1.1 List Comprehensions & Data Filtering",
-        type: LessonType.EXERCISE,
+        title: "1.1 Theory: Python Object References, Dynamic Typing & Mutability",
+        type: LessonType.THEORY,
         order: 1,
-        durationMinutes: 20,
-        contentMd: "# List Comprehensions\nWrite clean, pythonic 1-line loops to filter and transform lists.",
-        initialCode: "def filter_even_squares(numbers):\n    return [x**2 for x in numbers if x % 2 == 0]",
+        durationMinutes: 12,
+        contentMd: "# The Python Data Model & Dynamic Typing\n\nIn Python, **types live with objects, not variables**. Variables are simply named pointers referencing objects in heap memory.\n\n### 1. The Dynamic Typing Architecture\n- **Variables**: Stored in a system symbol table with links to heap objects.\n- **Objects**: Allocated memory chunks containing a type designator and a reference counter.\n- **Garbage Collection**: Automatically reclaims memory when an object's reference count drops to 0.\n\n### 2. Mutability vs. Immutability\n- **Immutable**: Numbers, Strings, Tuples, Frozensets. Any modification creates a fresh object.\n- **Mutable**: Lists, Dictionaries, Sets. Modified directly in memory without changing object ID.\n\n### 3. Shared References\n```python\na = [1, 2, 3]\nb = a       # Shared reference\nc = a[:]    # Shallow copy\n```",
+        initialCode: "# Python Dynamic Typing Demonstration\na = [1, 2, 3]\nb = a\nb.append(4)\nprint('a:', a)  # Shows [1, 2, 3, 4]",
         language: "python",
-        solutionCode: "def filter_even_squares(numbers):\n    return [x**2 for x in numbers if x % 2 == 0]",
+      },
+      {
+        moduleId: pyM1.id,
+        title: "1.2 Challenge: Filtering Even Squares (List Comprehensions)",
+        type: LessonType.EXERCISE,
+        order: 2,
+        durationMinutes: 15,
+        contentMd: "# Exercise: List Comprehension Filtering\nWrite a function `filter_even_squares(numbers)` that accepts a list of integers, filters out odd numbers, and returns a list of squares of the even numbers using a concise Python list comprehension.",
+        initialCode: "def filter_even_squares(numbers: list[int]) -> list[int]:\n    # Implement single-line comprehension\n    pass",
+        language: "python",
+        solutionCode: "def filter_even_squares(numbers: list[int]) -> list[int]:\n    return [x**2 for x in numbers if x % 2 == 0]",
       },
     ],
   });
 
   const pyM2 = await prisma.module.create({
-    data: { subjectId: "python", title: "Module 2: NumPy & Numerical Computation", description: "Array operations, vectorization, indexing, slicing, and broadcasting.", order: 2 },
+    data: {
+      subjectId: "python",
+      title: "Module 2: Statements, Control Flow & Iteration Protocols",
+      description: "Master conditional truth tests, loop constructs (while/for with else), the Iteration Protocol, and comprehensions.",
+      order: 2,
+    },
   });
   await prisma.lesson.createMany({
     data: [
       {
         moduleId: pyM2.id,
-        title: "2.1 Vectorized Matrix Multiplication with NumPy",
-        type: LessonType.EXERCISE,
+        title: "2.1 Theory: The Python Iteration Protocol & Comprehensions",
+        type: LessonType.THEORY,
         order: 1,
-        durationMinutes: 25,
-        contentMd: "# NumPy Vectorization\nPerform fast matrix multiplications using np.dot() and matrix transpose.",
-        initialCode: "import numpy as np\n\ndef compute_dot_product(A, B):\n    return np.dot(A, B)",
+        durationMinutes: 15,
+        contentMd: "# The Python Iteration Protocol\n\nAny iterable object in Python implements `__iter__()` and returns an iterator with `__next__()`.\n\n### 1. Loop `else` Clause\nIn Python, `for` and `while` loops can have an optional `else:` clause that executes **only if the loop completed without encountering a `break`**.\n\n### 2. Comprehensions\n- List: `[x for x in seq if cond]`\n- Dict: `{k: v for k, v in zip(keys, vals)}`\n- Generator: `(x for x in seq)`",
+        initialCode: "# Testing the iteration protocol\nnumbers = [1, 2, 3]\nit = iter(numbers)\nprint(next(it))\nprint(next(it))",
         language: "python",
-        solutionCode: "import numpy as np\n\ndef compute_dot_product(A, B):\n    return np.dot(A, B)",
+      },
+      {
+        moduleId: pyM2.id,
+        title: "2.2 Challenge: Character Frequency Counter",
+        type: LessonType.EXERCISE,
+        order: 2,
+        durationMinutes: 20,
+        contentMd: "# Exercise: Character Frequency Counter\nWrite a function `char_frequency(text)` that takes a string and returns a dictionary mapping characters to their frequency count.",
+        initialCode: "def char_frequency(text: str) -> dict[str, int]:\n    # Return character counts\n    pass",
+        language: "python",
+        solutionCode: "def char_frequency(text: str) -> dict[str, int]:\n    counts = {}\n    for c in text:\n        counts[c] = counts.get(c, 0) + 1\n    return counts",
       },
     ],
   });
 
   const pyM3 = await prisma.module.create({
-    data: { subjectId: "python", title: "Module 3: Pandas Data Manipulation", description: "DataFrames, CSV loading, missing data handling, merge/join, and groupby.", order: 3 },
+    data: {
+      subjectId: "python",
+      title: "Module 3: Functions, Scopes (LEGB), Closures & Generators",
+      description: "Deep dive into function definitions, argument passing modes (*args, **kwargs), the LEGB scope lookup rule, closures, and yield generators.",
+      order: 3,
+    },
   });
   await prisma.lesson.createMany({
     data: [
       {
         moduleId: pyM3.id,
-        title: "3.1 Cleaning & Grouping Customer Churn Data",
-        type: LessonType.EXERCISE,
+        title: "3.1 Theory: LEGB Scope Lookup Rule, Closures & Generators",
+        type: LessonType.THEORY,
         order: 1,
-        durationMinutes: 30,
-        contentMd: "# Pandas Data Cleaning\nFill missing values, convert data types, and group by customer segment.",
-        initialCode: "import pandas as pd\n\ndef clean_data(df):\n    df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')\n    return df.fillna(df['TotalCharges'].median())",
+        durationMinutes: 18,
+        contentMd: "# Scopes, Closures & Generators\n\n### 1. The LEGB Scope Lookup Rule\n1. **L (Local)**: Inside current function.\n2. **E (Enclosing)**: Static enclosing functions (nested scopes).\n3. **G (Global)**: Top-level module variables.\n4. **B (Built-in)**: Pre-defined Python names (`len`, `open`, `range`).\n\nUse `global` to modify module-level variables and `nonlocal` to modify enclosing scope variables.\n\n### 2. Generators & `yield`\nFunctions with `yield` pause their execution frame and yield values on demand, saving memory.",
+        initialCode: "# Scope demonstration\nx = 'global'\ndef outer():\n    x = 'enclosing'\n    def inner():\n        return x\n    return inner()",
         language: "python",
-        solutionCode: "import pandas as pd\n\ndef clean_data(df):\n    df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')\n    return df.fillna(df['TotalCharges'].median())",
+      },
+      {
+        moduleId: pyM3.id,
+        title: "3.2 Challenge: Fibonacci Generator with Yield",
+        type: LessonType.EXERCISE,
+        order: 2,
+        durationMinutes: 20,
+        contentMd: "# Exercise: Fibonacci Generator\nWrite a generator function `fibonacci_gen(limit)` that yields Fibonacci numbers up to and including `limit`.",
+        initialCode: "def fibonacci_gen(limit: int):\n    # Yield Fibonacci numbers <= limit\n    pass",
+        language: "python",
+        solutionCode: "def fibonacci_gen(limit: int):\n    a, b = 0, 1\n    while a <= limit:\n        yield a\n        a, b = b, a + b",
       },
     ],
   });
 
   const pyM4 = await prisma.module.create({
-    data: { subjectId: "python", title: "Module 4: Data Visualization", description: "Matplotlib & Seaborn plots for exploratory data analysis (EDA).", order: 4 },
+    data: {
+      subjectId: "python",
+      title: "Module 4: Object-Oriented Programming & Operator Overloading",
+      description: "Classes as object factories, encapsulation, inheritance hierarchies, MRO (Method Resolution Order), and dunder operator overloading methods.",
+      order: 4,
+    },
   });
   await prisma.lesson.createMany({
     data: [
       {
         moduleId: pyM4.id,
-        title: "4.1 Plotting Sales Distributions & Correlation Heatmaps",
+        title: "4.1 Theory: OOP Architecture, Inheritance & Operator Overloading",
         type: LessonType.THEORY,
         order: 1,
         durationMinutes: 20,
-        contentMd: "# Data Visualization with Seaborn\nCreate correlation heatmaps and feature distribution plots.",
-        initialCode: "import seaborn as sns\nimport matplotlib.pyplot as plt\n\n# sns.heatmap(df.corr(), annot=True)",
+        contentMd: "# OOP & Dunder Operator Overloading\n\nIn Python, classes are first-class runtime objects.\n\n### Key Dunder Methods:\n- `__init__(self, ...)`: Instance initialization.\n- `__str__(self)`: Human-friendly string representation.\n- `__repr__(self)`: Code-faithful string representation.\n- `__add__(self, other)`: Overloads `+`.\n- `__sub__(self, other)`: Overloads `-`.\n- `__mul__(self, other)`: Overloads `*`.\n- `__eq__(self, other)`: Overloads `==`.\n- `__abs__(self)`: Overloads `abs()`.",
+        initialCode: "class Point:\n    def __init__(self, x, y):\n        self.x, self.y = x, y\n    def __repr__(self):\n        return f'Point({self.x}, {self.y})'",
         language: "python",
+      },
+      {
+        moduleId: pyM4.id,
+        title: "4.2 Challenge: 2D Vector with Operator Overloading",
+        type: LessonType.EXERCISE,
+        order: 2,
+        durationMinutes: 30,
+        contentMd: "# Exercise: Vector2D Class\nCreate a `Vector2D` class that overloads `+`, `-`, `*` (scalar), `==`, `abs()`, and `__repr__`.",
+        initialCode: "import math\n\nclass Vector2D:\n    def __init__(self, x: float, y: float):\n        pass\n    # Implement dunder operators",
+        language: "python",
+        solutionCode: "import math\n\nclass Vector2D:\n    def __init__(self, x: float, y: float):\n        self.x = x\n        self.y = y\n    def __add__(self, other):\n        return Vector2D(self.x + other.x, self.y + other.y)\n    def __sub__(self, other):\n        return Vector2D(self.x - other.x, self.y - other.y)\n    def __mul__(self, scalar: float):\n        return Vector2D(self.x * scalar, self.y * scalar)\n    def __abs__(self):\n        return math.hypot(self.x, self.y)\n    def __eq__(self, other):\n        return isinstance(other, Vector2D) and self.x == other.x and self.y == other.y\n    def __repr__(self):\n        return f'Vector2D({self.x}, {self.y})'",
       },
     ],
   });
 
   const pyM5 = await prisma.module.create({
-    data: { subjectId: "python", title: "Module 5: Object-Oriented Programming (OOP)", description: "Classes, inheritance, encapsulation, polymorphism, and custom data pipelines.", order: 5 },
+    data: {
+      subjectId: "python",
+      title: "Module 5: Advanced Python: Decorators, Context Managers & Exceptions",
+      description: "Building robust production systems with custom exception hierarchies, context managers (with), and function/class decorators.",
+      order: 5,
+    },
   });
   await prisma.lesson.createMany({
     data: [
       {
         moduleId: pyM5.id,
-        title: "5.1 Building a Custom Data Preprocessor Class",
-        type: LessonType.EXERCISE,
+        title: "5.1 Theory: Decorators, Context Managers & Exception Handling",
+        type: LessonType.THEORY,
         order: 1,
-        durationMinutes: 30,
-        contentMd: "# OOP in Python\nBuild a DataCleaner class with fit() and transform() methods.",
-        initialCode: "class DataCleaner:\n    def __init__(self):\n        self.mean_val = None\n    def fit(self, X):\n        self.mean_val = sum(X) / len(X)\n    def transform(self, X):\n        return [x if x is not None else self.mean_val for x in X]",
+        durationMinutes: 20,
+        contentMd: "# Decorators & Context Managers\n\n### 1. Decorator Pattern\nA decorator is a callable that wraps another function to augment its behavior using `@functools.wraps`.\n\n### 2. Context Managers (`with`)\nImplemented via `__enter__` and `__exit__` to guarantee resource cleanup and handle exceptions cleanly.",
+        initialCode: "from functools import wraps\nimport time\n\ndef timer(func):\n    @wraps(func)\n    def wrapper(*args, **kwargs):\n        start = time.time()\n        res = func(*args, **kwargs)\n        print(f'{func.__name__} took {time.time()-start:.4f}s')\n        return res\n    return wrapper",
         language: "python",
-        solutionCode: "class DataCleaner:\n    def __init__(self):\n        self.mean_val = None\n    def fit(self, X):\n        self.mean_val = sum(X) / len(X)\n    def transform(self, X):\n        return [x if x is not None else self.mean_val for x in X]",
+      },
+      {
+        moduleId: pyM5.id,
+        title: "5.2 Challenge: Custom Exception Suppressing Context Manager",
+        type: LessonType.EXERCISE,
+        order: 2,
+        durationMinutes: 25,
+        contentMd: "# Exercise: Context Manager\nImplement a context manager class `SuppressExceptions(*exception_types)` that swallows specified exception types within a `with` block while allowing unhandled exceptions to raise normally.",
+        initialCode: "class SuppressExceptions:\n    def __init__(self, *exc_types):\n        pass\n    def __enter__(self):\n        pass\n    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:\n        pass",
+        language: "python",
+        solutionCode: "class SuppressExceptions:\n    def __init__(self, *exc_types):\n        self.exc_types = exc_types\n    def __enter__(self):\n        return self\n    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:\n        if exc_type is not None and issubclass(exc_type, self.exc_types):\n            return True\n        return False",
       },
     ],
   });

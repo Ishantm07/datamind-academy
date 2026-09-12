@@ -55,38 +55,43 @@ const OPEN_CURRICULUMS: Record<string, { title: string; description: string; les
   ],
   python: [
     {
-      title: "Module 1: Python Basics & Data Structures",
-      description: "Variables, strings, lists, dicts, control flow, and functions.",
+      title: "Module 1: Python Data Model, Core Types & Dynamic Typing",
+      description: "Understand Python object references, memory management, numbers, strings, lists, dicts, tuples, and mutability.",
       lessons: [
-        { title: "1.1 List Comprehensions & Data Filtering", type: "exercise", duration: "20 min" },
+        { title: "1.1 Theory: Python Object References, Dynamic Typing & Mutability", type: "theory", duration: "12 min" },
+        { title: "1.2 Challenge: Filtering Even Squares (List Comprehensions)", type: "exercise", duration: "15 min" },
       ],
     },
     {
-      title: "Module 2: NumPy & Numerical Computation",
-      description: "Array operations, vectorization, indexing, slicing, and broadcasting.",
+      title: "Module 2: Statements, Control Flow & Iteration Protocols",
+      description: "Master conditional truth tests, loop constructs (while/for with else), the Iteration Protocol, and comprehensions.",
       lessons: [
-        { title: "2.1 Vectorized Matrix Multiplication with NumPy", type: "exercise", duration: "25 min" },
+        { title: "2.1 Theory: The Python Iteration Protocol & Comprehensions", type: "theory", duration: "15 min" },
+        { title: "2.2 Challenge: Character Frequency Counter", type: "exercise", duration: "20 min" },
       ],
     },
     {
-      title: "Module 3: Pandas Data Manipulation",
-      description: "DataFrames, CSV loading, missing data handling, merge/join, and groupby.",
+      title: "Module 3: Functions, Scopes (LEGB), Closures & Generators",
+      description: "Deep dive into function definitions, argument passing modes (*args, **kwargs), the LEGB scope lookup rule, closures, and yield generators.",
       lessons: [
-        { title: "3.1 Cleaning & Grouping Customer Churn Data", type: "exercise", duration: "30 min" },
+        { title: "3.1 Theory: LEGB Scope Lookup Rule, Closures & Generators", type: "theory", duration: "18 min" },
+        { title: "3.2 Challenge: Fibonacci Generator with Yield", type: "exercise", duration: "20 min" },
       ],
     },
     {
-      title: "Module 4: Data Visualization",
-      description: "Matplotlib & Seaborn plots for exploratory data analysis (EDA).",
+      title: "Module 4: Object-Oriented Programming & Operator Overloading",
+      description: "Classes as object factories, encapsulation, inheritance hierarchies, MRO (Method Resolution Order), and dunder operator overloading methods.",
       lessons: [
-        { title: "4.1 Plotting Sales Distributions & Correlation Heatmaps", type: "theory", duration: "20 min" },
+        { title: "4.1 Theory: OOP Architecture, Inheritance & Operator Overloading", type: "theory", duration: "20 min" },
+        { title: "4.2 Challenge: 2D Vector with Operator Overloading", type: "exercise", duration: "30 min" },
       ],
     },
     {
-      title: "Module 5: Object-Oriented Programming (OOP)",
-      description: "Classes, inheritance, encapsulation, polymorphism, and custom data pipelines.",
+      title: "Module 5: Advanced Python: Decorators, Context Managers & Exceptions",
+      description: "Building robust production systems with custom exception hierarchies, context managers (with), and function/class decorators.",
       lessons: [
-        { title: "5.1 Building a Custom Data Preprocessor Class", type: "exercise", duration: "30 min" },
+        { title: "5.1 Theory: Decorators, Context Managers & Exception Handling", type: "theory", duration: "20 min" },
+        { title: "5.2 Challenge: Custom Exception Suppressing Context Manager", type: "exercise", duration: "25 min" },
       ],
     },
   ],

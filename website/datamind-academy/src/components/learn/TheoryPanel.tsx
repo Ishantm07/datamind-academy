@@ -97,7 +97,7 @@ export default function TheoryPanel({
       <div className="flex border-b border-white/5 bg-white/[0.02] px-4">
         {[
           { id: "problem", label: "Problem Statement", icon: FileText },
-          { id: "input_schema", label: "Input Schema", icon: Database },
+          { id: "input_schema", label: subjectId === "python" ? "Signature & Params" : "Input Schema", icon: Database },
           { id: "hints", label: "Hints & Discussion", icon: Sparkles },
         ].map((tab) => {
           const Icon = tab.icon;
@@ -173,21 +173,29 @@ export default function TheoryPanel({
 
         {activeTab === "input_schema" && (
           <div className="space-y-6">
-            <h3 className="text-lg font-bold text-white">Database Table Schemas</h3>
+            <h3 className="text-lg font-bold text-white">
+              {subjectId === "python" ? "Function & Parameter Specification" : "Database Table Schemas"}
+            </h3>
             <p className="text-xs text-muted-foreground">
-              The following schema defines the tables available in the current database environment:
+              {subjectId === "python"
+                ? "The signature and input/return data types required for this challenge:"
+                : "The following schema defines the tables available in the current database environment:"}
             </p>
 
             {tableSchema ? (
               <div className="glass-card rounded-xl p-5 border border-white/5 space-y-4">
                 <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                  <span className="font-mono text-sm font-bold text-indigo-400">{tableSchema.tableName} Table</span>
-                  <span className="text-[10px] text-muted-foreground uppercase font-mono">{tableSchema.columns.length} Columns</span>
+                  <span className="font-mono text-sm font-bold text-indigo-400">
+                    {subjectId === "python" ? tableSchema.tableName : `${tableSchema.tableName} Table`}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground uppercase font-mono">
+                    {subjectId === "python" ? `${tableSchema.columns.length} Parameters / Returns` : `${tableSchema.columns.length} Columns`}
+                  </span>
                 </div>
                 <div className="space-y-2 font-mono text-xs">
                   <div className="flex justify-between text-muted-foreground border-b border-white/5 pb-1">
-                    <span>Column Name</span>
-                    <span>Data Type</span>
+                    <span>{subjectId === "python" ? "Parameter / Return" : "Column Name"}</span>
+                    <span>Type Definition</span>
                   </div>
                   {tableSchema.columns.map((col, i) => (
                     <div key={i} className="flex justify-between text-white">
