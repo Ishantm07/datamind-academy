@@ -194,6 +194,12 @@ export default function CertificatePage({ params }: { params: { certId: string }
 
   useEffect(() => {
     const rawCertId = params.certId || "";
+    const lower = rawCertId.toLowerCase();
+    if (lower.includes("spec") || lower.includes("bidev")) {
+      window.location.replace(`/certificate/specialization/bi-developer`);
+      return;
+    }
+
     let found = getCertificateById(rawCertId);
     const activeUser = getActiveUser();
 

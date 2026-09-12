@@ -228,10 +228,13 @@ export default function TrackDetailPage({ params }: { params: { trackId: string 
                     <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
                   </Link>
                 ) : progressPct === 100 ? (
-                  <div className="flex items-center justify-center gap-2 w-full rounded-xl px-4 py-3 text-xs font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/20">
+                  <Link
+                    href={`/certificate/specialization/${track.id}`}
+                    className="flex items-center justify-center gap-2 w-full rounded-xl px-4 py-3 text-xs font-bold text-slate-950 bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 shadow-lg shadow-amber-500/20 transition-all"
+                  >
                     <GraduationCap className="w-4 h-4" />
-                    <span>Track 100% Completed!</span>
-                  </div>
+                    <span>View Specialization Certificate →</span>
+                  </Link>
                 ) : (
                   <Link
                     href={`/learn/${track.subjects[0]}/m1/theory`}
@@ -543,6 +546,44 @@ export default function TrackDetailPage({ params }: { params: { trackId: string 
                 </motion.div>
               );
             })}
+          </div>
+
+          {/* Specialization Master Credential Showcase */}
+          <div className="mt-12 rounded-3xl p-6 sm:p-8 bg-gradient-to-br from-[#18162e]/80 via-[#121124] to-[#0c0d18] border border-amber-500/30 relative overflow-hidden shadow-2xl">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+              <div className="space-y-3 max-w-xl">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-300 text-[10px] font-bold uppercase tracking-wider">
+                  <Award className="w-3.5 h-3.5 text-amber-400" />
+                  Career Specialization Master Credential
+                </div>
+                <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                  {track.title} Professional Specialization
+                </h3>
+                <p className="text-xs text-gray-300 leading-relaxed">
+                  Complete all modules and capstone challenges across all {trackSubjects.length} subjects to earn your official Executive Specialization Diploma, featuring multi-discipline ledger verification and dual executive signatures.
+                </p>
+                <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-muted-foreground">
+                  <span className="flex items-center gap-1 text-amber-400 font-semibold">
+                    <Sparkles className="w-3 h-3" /> Multi-Pillar Dual Accreditation
+                  </span>
+                  <span>•</span>
+                  <span>{trackSubjects.length * 40} Challenges</span>
+                  <span>•</span>
+                  <span>Official Verified Diploma</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Link
+                  href={`/certificate/specialization/${track.id}`}
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 text-slate-950 font-bold text-xs shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2"
+                >
+                  <Award className="w-4 h-4" />
+                  <span>View Specialization Diploma →</span>
+                </Link>
+              </div>
+            </div>
           </div>
         </section>
       </main>

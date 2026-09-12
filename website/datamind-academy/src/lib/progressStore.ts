@@ -20,6 +20,15 @@ export interface StoredCertificate {
   totalQuestions: number;
   issuedAt: string;
   verificationHash: string;
+  isSpecialization?: boolean;
+  trackId?: string;
+  pillars?: {
+    id: string;
+    title: string;
+    score: number;
+    questions: number;
+    icon: string;
+  }[];
 }
 
 const STORAGE_PREFIX = "datamind_progress_";
@@ -179,6 +188,190 @@ export const SUBJECT_CERT_DETAILS: Record<
     description: "Deep Neural Architectures, Transformers, Large Language Models & Autonomous Agents",
   },
 };
+
+export const SPECIALIZATION_CERT_DETAILS: Record<
+  string,
+  {
+    title: string;
+    badge: string;
+    faculty: string;
+    subFaculty: string;
+    description: string;
+    subjects: string[];
+    defaultCertId: string;
+  }
+> = {
+  "bi-developer": {
+    title: "Business Intelligence Developer Specialization",
+    badge: "📊",
+    faculty: "Faculty of Enterprise Analytics & Business Intelligence Engineering",
+    subFaculty: "Department of Tabular Data Modeling, Relational Databases & Executive Reporting",
+    description: "Comprehensive mastery of Relational Database Engineering, High-Performance SQL Querying, Enterprise DAX Formulations, and Tabular KPI Architectures.",
+    subjects: ["sql", "powerbi"],
+    defaultCertId: "DM-SPEC-BIDEV-001",
+  },
+  "data-analyst": {
+    title: "Data Analyst Professional Specialization",
+    badge: "📈",
+    faculty: "Faculty of Business Intelligence & Applied Data Analytics",
+    subFaculty: "Department of Relational Analysis, Interactive Dashboards & Python Data Wrangling",
+    description: "Rigorous competency across Relational Database Systems, Enterprise Power BI Modeling, and Python Exploratory Analytics.",
+    subjects: ["sql", "powerbi", "python"],
+    defaultCertId: "DM-SPEC-ANALYST-001",
+  },
+  "data-engineer": {
+    title: "Data Engineer Professional Specialization",
+    badge: "⚙️",
+    faculty: "Faculty of Big Data Architecture & Pipeline Engineering",
+    subFaculty: "Department of High-Throughput Databases & Automated ETL Workflows",
+    description: "Architectural mastery of Scalable Relational Schemas, Performance Query Tuning, and Python Automated Data Pipelines.",
+    subjects: ["sql", "python"],
+    defaultCertId: "DM-SPEC-ENG-001",
+  },
+  "data-scientist": {
+    title: "Data Scientist Professional Specialization",
+    badge: "🔬",
+    faculty: "Faculty of Computational Statistics & Machine Learning",
+    subFaculty: "Department of Feature Engineering, Python Analytics & Predictive Algorithms",
+    description: "Advanced feature extraction with SQL, deep exploratory analysis with Python/Pandas, and Scikit-Learn Predictive Model Deployment.",
+    subjects: ["sql", "python", "ml"],
+    defaultCertId: "DM-SPEC-SCI-001",
+  },
+  "ai-engineer": {
+    title: "AI & ML Systems Engineer Professional Specialization",
+    badge: "🤖",
+    faculty: "Faculty of Artificial Intelligence & Deep Neural Systems",
+    subFaculty: "Department of Machine Learning Algorithms, Transformers, Fine-Tuning & Autonomous Agents",
+    description: "Full-stack intelligent systems development: Scikit-learn algorithms, Deep Neural Networks, LoRA Fine-Tuning, RAG, and Autonomous Agent Loops.",
+    subjects: ["python", "ml", "ai"],
+    defaultCertId: "DM-SPEC-AI-001",
+  },
+};
+
+/**
+ * Checks whether a track's constituent subjects are all fully completed
+ */
+export function isSpecializationCompleted(trackId: string): boolean {
+  if (typeof window === "undefined" || !trackId) return false;
+  const spec = SPECIALIZATION_CERT_DETAILS[trackId.toLowerCase()];
+  if (!spec) return false;
+
+  return spec.subjects.every((sid) => {
+    const progress = getSubjectProgress(sid);
+    return progress.finalChallengePassed === true || progress.isCompleted === true;
+  });
+}
+
+/**
+ * Retrieves the stored Specialization Certificate for a track if it exists
+ */
+export function getSpecializationCertificate(trackId: string): StoredCertificate | null {
+  if (typeof window === "undefined" || !trackId) return null;
+  const normTrack = trackId.toLowerCase();
+  const specMeta = SPECIALIZATION_CERT_DETAILS[normTrack];
+
+  const raw = localStorage.getItem(CERTS_KEY);
+  if (!raw) return null;
+
+  try {
+    const certs: StoredCertificate[] = JSON.parse(raw);
+    const match = certs.find(
+      (c) =>
+        c.isSpecialization &&
+        (c.trackId?.toLowerCase() === normTrack ||
+          c.subjectId?.toLowerCase() === normTrack ||
+          (specMeta && c.certificateId.toLowerCase() === specMeta.defaultCertId.toLowerCase()))
+    );
+    return match || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Issues a legitimate Specialization Master Credential when a track is completed
+ */
+export function issueSpecializationCertificate(
+  trackId: string,
+  userName?: string,
+  userEmail?: string
+): StoredCertificate {
+  const normTrack = (trackId || "bi-developer").toLowerCase();
+  const specMeta = SPECIALIZATION_CERT_DETAILS[normTrack] || SPECIALIZATION_CERT_DETAILS["bi-developer"];
+  const activeUser = getActiveUser();
+
+  const recipientName =
+    userName && userName !== "DataMind Learner"
+      ? userName
+      : activeUser?.name && activeUser.name !== "DataMind Learner"
+      ? activeUser.name
+      : "DataMind Learner";
+
+  const recipientEmail =
+    userEmail && userEmail !== "student@datamind.academy"
+      ? userEmail
+      : activeUser?.email || "student@datamind.academy";
+
+  const pillars = specMeta.subjects.map((sid) => {
+    const subProgress = getSubjectProgress(sid);
+    const subDetail = SUBJECT_CERT_DETAILS[sid];
+    return {
+      id: sid,
+      title: subDetail?.title || `${sid.toUpperCase()} Systems`,
+      score: subProgress.totalScore || 1200,
+      questions: 40,
+      icon: subDetail?.icon || "📘",
+    };
+  });
+
+  const certId = specMeta.defaultCertId;
+  const issuedAt = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  const totalScore = pillars.reduce((sum, p) => sum + p.score, 0);
+  const totalQuestions = pillars.reduce((sum, p) => sum + p.questions, 0);
+
+  const specCert: StoredCertificate = {
+    certificateId: certId,
+    recipientName,
+    recipientEmail,
+    subjectId: normTrack,
+    subjectTitle: specMeta.title,
+    score: totalScore,
+    totalQuestions,
+    issuedAt,
+    verificationHash: "0x7F8A3B21E5C4A9D8",
+    isSpecialization: true,
+    trackId: normTrack,
+    pillars,
+  };
+
+  if (typeof window !== "undefined") {
+    const rawCerts = localStorage.getItem(CERTS_KEY);
+    let certsList: StoredCertificate[] = [];
+    if (rawCerts) {
+      try {
+        certsList = JSON.parse(rawCerts);
+      } catch (e) {
+        certsList = [];
+      }
+    }
+
+    const idx = certsList.findIndex(
+      (c) =>
+        c.isSpecialization &&
+        (c.certificateId.toLowerCase() === certId.toLowerCase() || c.subjectId.toLowerCase() === normTrack)
+    );
+
+    if (idx >= 0) {
+      certsList[idx] = specCert;
+    } else {
+      certsList.unshift(specCert);
+    }
+
+    localStorage.setItem(CERTS_KEY, JSON.stringify(certsList));
+  }
+
+  return specCert;
+}
 
 export function getActiveUser(): { name: string; email: string } | null {
   if (typeof window === "undefined") return null;

@@ -26,6 +26,7 @@ import {
   ensureAllCompletedCertificatesExist,
   forceRestoreSubjectCertificate,
   SUBJECT_CERT_DETAILS,
+  SPECIALIZATION_CERT_DETAILS,
 } from "@/lib/progressStore";
 import { SUBJECTS } from "@/lib/data";
 
@@ -511,11 +512,26 @@ function ProfileContent() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {certificates.map((c) => {
-                    const meta = SUBJECT_CERT_DETAILS[c.subjectId?.toLowerCase()] || SUBJECT_CERT_DETAILS.python;
+                    const isSpec = c.isSpecialization || c.certificateId.startsWith("DM-SPEC");
+                    const specMeta = c.trackId ? SPECIALIZATION_CERT_DETAILS[c.trackId] : undefined;
+                    const meta = isSpec
+                      ? {
+                          title: c.subjectTitle || specMeta?.title || "Career Specialization",
+                          icon: specMeta?.badge || "🏆",
+                        }
+                      : SUBJECT_CERT_DETAILS[c.subjectId?.toLowerCase()] || SUBJECT_CERT_DETAILS.python;
+                    const certUrl = isSpec
+                      ? `/certificate/specialization/${c.trackId || "bi-developer"}`
+                      : `/certificate/${c.certificateId}`;
+
                     return (
                       <div
                         key={c.certificateId}
-                        className="relative rounded-2xl bg-gradient-to-br from-[#121324] via-[#10111f] to-[#0c0d18] border border-amber-500/30 p-5 flex flex-col justify-between shadow-xl overflow-hidden hover:border-amber-500/60 transition-all group"
+                        className={`relative rounded-2xl p-5 flex flex-col justify-between shadow-xl overflow-hidden transition-all group border ${
+                          isSpec
+                            ? "bg-gradient-to-br from-[#18152e] via-[#121124] to-[#0c0d18] border-amber-500/50 hover:border-amber-400/80 shadow-amber-500/10"
+                            : "bg-gradient-to-br from-[#121324] via-[#10111f] to-[#0c0d18] border-amber-500/30 hover:border-amber-500/60"
+                        }`}
                       >
                         <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
 
@@ -526,9 +542,15 @@ function ProfileContent() {
                                 {meta.icon}
                               </div>
                               <div>
-                                <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                                  <ShieldCheck className="w-2.5 h-2.5" /> VERIFIED DIPLOMA
-                                </span>
+                                {isSpec ? (
+                                  <span className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-300 uppercase tracking-widest bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30">
+                                    <Award className="w-2.5 h-2.5 text-amber-400" /> SPECIALIZATION MASTER CREDENTIAL
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                    <ShieldCheck className="w-2.5 h-2.5" /> VERIFIED DIPLOMA
+                                  </span>
+                                )}
                                 <h4 className="text-sm font-bold text-white mt-1 leading-snug">{c.subjectTitle}</h4>
                               </div>
                             </div>
@@ -548,22 +570,24 @@ function ProfileContent() {
                               <span className="text-gray-300">{c.issuedAt}</span>
                             </div>
                             <div className="flex items-center justify-between">
-                              <span className="text-[11px] text-muted-foreground">Curriculum Score</span>
-                              <span className="font-mono font-bold text-amber-400">{c.score} PTS (100% Mastery)</span>
+                              <span className="text-[11px] text-muted-foreground">{isSpec ? "Track Scope" : "Curriculum Score"}</span>
+                              <span className="font-mono font-bold text-amber-400">
+                                {isSpec ? "Dual-Pillar Specialization" : `${c.score} PTS (100% Mastery)`}
+                              </span>
                             </div>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-2 pt-2 border-t border-white/5">
                           <Link
-                            href={`/certificate/${c.certificateId}`}
+                            href={certUrl}
                             className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-bold text-xs shadow-md hover:brightness-110 transition-all"
                           >
-                            <ExternalLink className="w-3.5 h-3.5" /> View Full Diploma
+                            <ExternalLink className="w-3.5 h-3.5" /> {isSpec ? "View Specialization Diploma" : "View Full Diploma"}
                           </Link>
                           <button
                             onClick={() => {
-                              navigator.clipboard.writeText(`${window.location.origin}/certificate/${c.certificateId}`);
+                              navigator.clipboard.writeText(`${window.location.origin}${certUrl}`);
                               showToast(`Diploma link copied to clipboard!`);
                             }}
                             className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white transition-all"
@@ -678,11 +702,28 @@ function ProfileContent() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {certificates.map((c) => {
-                  const meta = SUBJECT_CERT_DETAILS[c.subjectId?.toLowerCase()] || SUBJECT_CERT_DETAILS.python;
+                  const isSpec = c.isSpecialization || c.certificateId.startsWith("DM-SPEC");
+                  const specMeta = c.trackId ? SPECIALIZATION_CERT_DETAILS[c.trackId] : undefined;
+                  const meta = isSpec
+                    ? {
+                        title: c.subjectTitle || specMeta?.title || "Career Specialization",
+                        faculty: specMeta?.faculty || "Career Specialization Board",
+                        icon: specMeta?.badge || "🏆",
+                        grade: "A+ (Executive Honors)",
+                      }
+                    : SUBJECT_CERT_DETAILS[c.subjectId?.toLowerCase()] || SUBJECT_CERT_DETAILS.python;
+                  const certUrl = isSpec
+                    ? `/certificate/specialization/${c.trackId || "bi-developer"}`
+                    : `/certificate/${c.certificateId}`;
+
                   return (
                     <div
                       key={c.certificateId}
-                      className="rounded-3xl bg-gradient-to-br from-[#121320] via-[#10101c] to-[#0c0d16] border border-amber-500/30 p-6 space-y-4 shadow-xl relative overflow-hidden"
+                      className={`rounded-3xl p-6 space-y-4 shadow-xl relative overflow-hidden transition-all border ${
+                        isSpec
+                          ? "bg-gradient-to-br from-[#191630] via-[#121222] to-[#0c0d18] border-amber-500/50 shadow-amber-500/10"
+                          : "bg-gradient-to-br from-[#121320] via-[#10101c] to-[#0c0d16] border-amber-500/30"
+                      }`}
                     >
                       <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
 
@@ -692,16 +733,22 @@ function ProfileContent() {
                             {meta.icon}
                           </div>
                           <div>
-                            <div className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-400 uppercase tracking-widest">
-                              <ShieldCheck className="w-3 h-3" /> VERIFIED DIPLOMA
-                            </div>
+                            {isSpec ? (
+                              <div className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-300 uppercase tracking-widest bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30 mb-1">
+                                <Award className="w-3 h-3 text-amber-400" /> SPECIALIZATION MASTER DIPLOMA
+                              </div>
+                            ) : (
+                              <div className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-400 uppercase tracking-widest">
+                                <ShieldCheck className="w-3 h-3" /> VERIFIED DIPLOMA
+                              </div>
+                            )}
                             <h3 className="text-base font-bold text-white">{c.subjectTitle}</h3>
                             <div className="text-[11px] font-mono text-indigo-400">ID: {c.certificateId}</div>
                           </div>
                         </div>
                       </div>
 
-                      <div className="text-xs text-gray-300 space-y-1 pt-2 border-t border-white/5">
+                      <div className="text-xs text-gray-300 space-y-1.5 pt-2 border-t border-white/5">
                         <div className="flex items-center justify-between">
                           <span className="text-muted-foreground">Recipient Name:</span>
                           <strong className="text-white font-semibold">{c.recipientName}</strong>
@@ -709,6 +756,12 @@ function ProfileContent() {
                         <div className="flex items-center justify-between">
                           <span className="text-muted-foreground">Issue Date:</span>
                           <strong className="text-white font-semibold">{c.issuedAt}</strong>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">{isSpec ? "Accreditation Type:" : "Curriculum Score:"}</span>
+                          <span className="font-mono text-amber-400 font-bold">
+                            {isSpec ? "Multi-Pillar Track Specialization" : `${c.score} PTS (100%)`}
+                          </span>
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="text-muted-foreground">Verification Hash:</span>
@@ -720,19 +773,19 @@ function ProfileContent() {
 
                       <div className="flex items-center gap-3 pt-2">
                         <Link
-                          href={`/certificate/${c.certificateId}`}
-                          className="flex-1 text-center py-2 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 hover:opacity-90 text-slate-950 font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5"
+                          href={certUrl}
+                          className="flex-1 text-center py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 hover:opacity-90 text-slate-950 font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5"
                         >
-                          <ExternalLink className="w-3.5 h-3.5" /> View Diploma
+                          <ExternalLink className="w-3.5 h-3.5" /> {isSpec ? "View Specialization Diploma" : "View Full Diploma"}
                         </Link>
                         <button
                           onClick={() => {
                             if (navigator.clipboard) {
-                              navigator.clipboard.writeText(`${window.location.origin}/certificate/${c.certificateId}`);
+                              navigator.clipboard.writeText(`${window.location.origin}${certUrl}`);
                               showToast("Certificate verification URL copied!");
                             }
                           }}
-                          className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 text-xs transition-all"
+                          className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 text-xs transition-all"
                           title="Share Certificate URL"
                         >
                           <Share2 className="w-4 h-4" />
