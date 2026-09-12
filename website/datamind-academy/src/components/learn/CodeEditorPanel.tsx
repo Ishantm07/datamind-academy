@@ -6,7 +6,7 @@ import Link from "next/link";
 import Editor from "@monaco-editor/react";
 import { Play, CheckCircle2, XCircle, Terminal, Check, Award, Trophy, SkipForward, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { recordQuestionCompletion } from "@/lib/progressStore";
+import { recordQuestionCompletion, issueCertificate } from "@/lib/progressStore";
 
 interface CodeEditorPanelProps {
   initialCode?: string;
@@ -113,17 +113,26 @@ export default function CodeEditorPanel({
 
       // Record completion and check for certificate eligibility
       let userName = "DataMind Learner";
+      let userEmail = "student@datamind.academy";
       try {
         const userStr = localStorage.getItem("datamind_user");
         if (userStr) {
           const u = JSON.parse(userStr);
           if (u.name) userName = u.name;
+          if (u.email) userEmail = u.email;
         }
       } catch (e) {}
 
-      const result = recordQuestionCompletion(subjectId, questionId, points, userName);
-      if (result.certificateId || questionIndex >= 40) {
-        setEarnedCertificateId(result.certificateId || `DM-${subjectId.toUpperCase()}-COMPLETION`);
+      const result = recordQuestionCompletion(subjectId, questionId, points, userName, userEmail, questionIndex);
+      let certId = result.certificateId;
+
+      if (!certId && (questionIndex >= 40 || result.progress.completedQuestionIds.length >= 40)) {
+        const cert = issueCertificate(subjectId, userName, userEmail, result.progress.totalScore);
+        certId = cert.certificateId;
+      }
+
+      if (certId) {
+        setEarnedCertificateId(certId);
       }
 
       // Start 5-second countdown to auto-advance (only if not the last question)

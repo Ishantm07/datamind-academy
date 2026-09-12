@@ -3,29 +3,76 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Award, CheckCircle, Share2, Printer, ArrowLeft, ShieldCheck } from "lucide-react";
-import { getCertificateById, StoredCertificate } from "@/lib/progressStore";
+import {
+  getCertificateById,
+  issueCertificate,
+  StoredCertificate,
+  SUBJECT_CERT_DETAILS,
+  SUBJECT_CERT_TITLES,
+} from "@/lib/progressStore";
 
 export default function CertificatePage({ params }: { params: { certId: string } }) {
   const [cert, setCert] = useState<StoredCertificate | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const found = getCertificateById(params.certId);
+    const rawCertId = params.certId || "";
+    let found = getCertificateById(rawCertId);
+
     if (found) {
       setCert(found);
     } else {
-      // Create a fallback certificate for display if direct link is accessed
-      setCert({
-        certificateId: params.certId,
-        recipientName: "Ishant Mishra",
-        recipientEmail: "ishant@datamind.academy",
-        subjectId: "sql",
-        subjectTitle: "SQL Mastery & Relational Database Engineering",
-        score: 1150,
-        totalQuestions: 40,
-        issuedAt: new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
-        verificationHash: "0x4f89a2b71c90e3d1",
-      });
+      // Deduce subject from certId string (e.g. DM-PYTHON-1234 -> python)
+      const lower = rawCertId.toLowerCase();
+      let detectedSubject = "python";
+      if (lower.includes("sql")) detectedSubject = "sql";
+      else if (lower.includes("python")) detectedSubject = "python";
+      else if (lower.includes("powerbi") || lower.includes("pbi")) detectedSubject = "powerbi";
+      else if (lower.includes("ml")) detectedSubject = "ml";
+      else if (lower.includes("ai")) detectedSubject = "ai";
+      else {
+        // Check if any subject has progress in localStorage
+        try {
+          const sids = ["python", "sql", "powerbi", "ml", "ai"];
+          for (const s of sids) {
+            const raw = localStorage.getItem(`datamind_progress_${s}`);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (parsed.isCompleted || parsed.completedQuestionIds?.length > 0) {
+                detectedSubject = s;
+                break;
+              }
+            }
+          }
+        } catch (e) {}
+      }
+
+      // Check query parameter if available
+      try {
+        if (typeof window !== "undefined") {
+          const urlParams = new URLSearchParams(window.location.search);
+          const qSubject = urlParams.get("subject");
+          if (qSubject && SUBJECT_CERT_TITLES[qSubject.toLowerCase()]) {
+            detectedSubject = qSubject.toLowerCase();
+          }
+        }
+      } catch (e) {}
+
+      // Check logged-in user details
+      let learnerName = "DataMind Learner";
+      let learnerEmail = "student@datamind.academy";
+      try {
+        const userStr = localStorage.getItem("datamind_user");
+        if (userStr) {
+          const u = JSON.parse(userStr);
+          if (u.name) learnerName = u.name;
+          if (u.email) learnerEmail = u.email;
+        }
+      } catch (e) {}
+
+      // Issue and persist this certificate so future queries and dashboard reflect it accurately
+      const createdCert = issueCertificate(detectedSubject, learnerName, learnerEmail, 1200, rawCertId);
+      setCert(createdCert);
     }
     setLoading(false);
   }, [params.certId]);
@@ -40,6 +87,9 @@ export default function CertificatePage({ params }: { params: { certId: string }
       </div>
     );
   }
+
+  const subjectKey = cert?.subjectId?.toLowerCase() || "python";
+  const subjectMeta = SUBJECT_CERT_DETAILS[subjectKey] || SUBJECT_CERT_DETAILS.python;
 
   const handlePrint = () => {
     window.print();
@@ -93,7 +143,7 @@ export default function CertificatePage({ params }: { params: { certId: string }
             DataMind Academy
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground uppercase tracking-widest">
-            School of Data Science, AI & Relational Systems
+            {subjectMeta.school}
           </p>
         </div>
 
@@ -106,9 +156,17 @@ export default function CertificatePage({ params }: { params: { certId: string }
           <p className="text-sm sm:text-base text-gray-300 max-w-2xl mx-auto leading-relaxed pt-2">
             for successfully completing all <strong className="text-white">40 Comprehensive Challenges</strong> and demonstrating advanced proficiency in
           </p>
-          <div className="text-xl sm:text-2xl font-bold text-indigo-400 tracking-wide pt-1">
-            {cert?.subjectTitle}
+          <div className="flex items-center justify-center gap-2.5 pt-2">
+            <span className="text-2xl">{subjectMeta.icon}</span>
+            <div className={`text-xl sm:text-2xl font-bold tracking-wide ${subjectMeta.color}`}>
+              {cert?.subjectTitle}
+            </div>
           </div>
+          {subjectMeta.description && (
+            <p className="text-xs text-muted-foreground max-w-xl mx-auto pt-1 italic">
+              {subjectMeta.description}
+            </p>
+          )}
         </div>
 
         {/* Certificate Metadata & Signatures */}

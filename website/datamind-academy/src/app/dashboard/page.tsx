@@ -6,7 +6,13 @@ import { SUBJECTS } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getSubjectProgress, UserProgressState, StoredCertificate } from "@/lib/progressStore";
+import {
+  getSubjectProgress,
+  UserProgressState,
+  StoredCertificate,
+  issueCertificate,
+  SUBJECT_CERT_TITLES,
+} from "@/lib/progressStore";
 
 type UserData = { name: string; email: string; xp: number; streak: number; level: number };
 
@@ -69,19 +75,48 @@ export default function DashboardPage() {
       const p = getSubjectProgress(sid);
       progress[sid] = p;
       total += p.completedQuestionIds.length;
+      if ((p.isCompleted || p.completedQuestionIds.length >= 40) && !p.certificateId) {
+        issueCertificate(sid, USER.name, (USER as any).email);
+      }
     });
 
     setSubjectProgress(progress);
     setTotalLessons(total);
 
-    // Load certificates
+    // Load certificates and auto-correct any mislabeled certificates (e.g. from previous sessions)
     try {
       const certsStr = localStorage.getItem("datamind_certificates");
       if (certsStr) {
-        setCertificates(JSON.parse(certsStr));
+        const parsed: StoredCertificate[] = JSON.parse(certsStr);
+        let hasChanges = false;
+        const cleaned = parsed.map((c) => {
+          let sid = c.subjectId?.toLowerCase();
+          const certIdLower = c.certificateId.toLowerCase();
+          if (certIdLower.includes("python")) sid = "python";
+          else if (certIdLower.includes("powerbi")) sid = "powerbi";
+          else if (certIdLower.includes("ml")) sid = "ml";
+          else if (certIdLower.includes("ai")) sid = "ai";
+          else if (certIdLower.includes("sql")) sid = "sql";
+
+          const expectedTitle = sid ? SUBJECT_CERT_TITLES[sid] : null;
+          if (sid && expectedTitle && (c.subjectId !== sid || c.subjectTitle !== expectedTitle)) {
+            hasChanges = true;
+            return {
+              ...c,
+              subjectId: sid,
+              subjectTitle: expectedTitle,
+            };
+          }
+          return c;
+        });
+
+        if (hasChanges) {
+          localStorage.setItem("datamind_certificates", JSON.stringify(cleaned));
+        }
+        setCertificates(cleaned);
       }
     } catch (e) {}
-  }, []);
+  }, [USER.name, (USER as any).email]);
 
   // Build active courses from real progress
   const activeCourses = SUBJECTS.map((subject) => {
