@@ -7,10 +7,16 @@ import Editor from "@monaco-editor/react";
 import { Play, CheckCircle2, XCircle, Terminal, Check, Award, Trophy, SkipForward, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { recordQuestionCompletion, issueCertificate } from "@/lib/progressStore";
+import { validateSolution, TestCaseResult } from "@/lib/codeValidator";
 
 interface CodeEditorPanelProps {
   initialCode?: string;
   language?: string;
+  solutionCode?: string;
+  sampleInput?: string;
+  sampleOutput?: string;
+  constraints?: string[];
+  tableSchema?: { tableName: string; columns: { name: string; type: string }[] };
   points?: number;
   subjectId?: string;
   moduleId?: string;
@@ -23,6 +29,11 @@ interface CodeEditorPanelProps {
 export default function CodeEditorPanel({
   initialCode = "",
   language = "sql",
+  solutionCode = "",
+  sampleInput = "",
+  sampleOutput = "",
+  constraints = [],
+  tableSchema,
   points = 30,
   subjectId = "sql",
   moduleId = "m1",
@@ -35,13 +46,14 @@ export default function CodeEditorPanel({
   const [code, setCode] = useState(initialCode);
   const [activeTab, setActiveTab] = useState<"output" | "testcases">("output");
   const [isRunning, setIsRunning] = useState(false);
+  const [consoleLog, setConsoleLog] = useState<string | null>(null);
   const [earnedCertificateId, setEarnedCertificateId] = useState<string | null>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [testResults, setTestResults] = useState<{
     submitted: boolean;
     allPassed: boolean;
-    cases: { name: string; status: "PASSED" | "FAILED"; message: string }[];
+    cases: TestCaseResult[];
   } | null>(null);
 
   // Compute next lesson URL
@@ -84,6 +96,19 @@ export default function CodeEditorPanel({
     }
   }, [countdown, goToNextQuestion]);
 
+  // Reset state when navigating to a new question
+  useEffect(() => {
+    setCode(initialCode);
+    setTestResults(null);
+    setConsoleLog(null);
+    setEarnedCertificateId(null);
+    setCountdown(null);
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+  }, [questionId, initialCode]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -100,18 +125,36 @@ export default function CodeEditorPanel({
 
     setTimeout(() => {
       setIsRunning(false);
+
+      // 1. Run rigorous code validation engine
+      const validation = validateSolution({
+        userCode: code,
+        language,
+        solutionCode,
+        initialCode,
+        sampleInput,
+        sampleOutput,
+        constraints,
+        tableSchema,
+      });
+
+      setConsoleLog(validation.consoleOutput);
       setTestResults({
         submitted: true,
-        allPassed: true,
-        cases: [
-          { name: "Test Case 0 (Sample Input)", status: "PASSED", message: "Output matches expected format perfectly." },
-          { name: "Test Case 1 (Hidden Edge Case)", status: "PASSED", message: "Alphabetical tie-breaker condition verified." },
-          { name: "Test Case 2 (Large Dataset)", status: "PASSED", message: "Executed in 12ms." },
-        ],
+        allPassed: validation.allPassed,
+        cases: validation.cases,
       });
       setActiveTab("testcases");
 
-      // Record completion and check for certificate eligibility
+      // IF CODE IS WRONG / TESTS FAILED:
+      if (!validation.allPassed) {
+        // DO NOT start auto-advance countdown!
+        // DO NOT record question completion or award XP!
+        // DO NOT show certificate!
+        return;
+      }
+
+      // IF TESTS PASSED:
       let userName = "DataMind Learner";
       let userEmail = "student@datamind.academy";
       try {
@@ -124,22 +167,24 @@ export default function CodeEditorPanel({
       } catch (e) {}
 
       const result = recordQuestionCompletion(subjectId, questionId, points, userName, userEmail, questionIndex);
-      let certId = result.certificateId;
 
-      if (!certId && (questionIndex >= 40 || result.progress.completedQuestionIds.length >= 40)) {
-        const cert = issueCertificate(subjectId, userName, userEmail, result.progress.totalScore);
-        certId = cert.certificateId;
-      }
+      // Certificate Check — ONLY when completing the 40th challenge (or 40 challenges completed)!
+      const isChallengeCompleted = isLastQuestion || questionIndex >= totalQuestions || (result && result.progress.completedQuestionIds.length >= 40);
 
-      if (certId) {
+      if (isChallengeCompleted) {
+        let certId = result.certificateId;
+        if (!certId) {
+          const cert = issueCertificate(subjectId, userName, userEmail, result.progress.totalScore);
+          certId = cert.certificateId;
+        }
         setEarnedCertificateId(certId);
       }
 
-      // Start 5-second countdown to auto-advance (only if not the last question)
-      if (questionIndex < totalQuestions) {
+      // Auto-advance to next question in 5s ONLY if NOT the last question
+      if (!isLastQuestion) {
         setCountdown(5);
       }
-    }, 900);
+    }, 700);
   };
 
   const cancelCountdown = () => {
@@ -165,7 +210,7 @@ export default function CodeEditorPanel({
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
-          {earnedCertificateId && (
+          {earnedCertificateId && (isLastQuestion || questionIndex >= totalQuestions) && (
             <Link
               href={`/certificate/${earnedCertificateId}`}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-400 to-yellow-500 text-black font-extrabold rounded-xl text-xs hover:opacity-90 transition-all shadow-md animate-bounce"
@@ -234,7 +279,12 @@ export default function CodeEditorPanel({
               <CheckCircle2 className="w-3.5 h-3.5" />
               Test Cases Results
               {testResults && (
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span
+                  className={cn(
+                    "w-2 h-2 rounded-full",
+                    testResults.allPassed ? "bg-emerald-400 animate-pulse" : "bg-rose-400"
+                  )}
+                />
               )}
             </button>
           </div>
@@ -244,14 +294,17 @@ export default function CodeEditorPanel({
         <div className="flex-1 p-4 font-mono text-xs overflow-y-auto bg-black/30">
           {activeTab === "output" && (
             <div className="space-y-2 text-gray-300">
-              {testResults ? (
-                <pre className="text-emerald-400">
-{`Executing sandbox test suites...
-Execution completed in 14ms.
-All constraints satisfied.`}
+              {consoleLog ? (
+                <pre
+                  className={cn(
+                    "whitespace-pre-wrap leading-relaxed font-mono",
+                    testResults?.allPassed ? "text-emerald-400" : "text-rose-400"
+                  )}
+                >
+                  {consoleLog}
                 </pre>
               ) : (
-                <span className="text-gray-600 italic">
+                <span className="text-gray-600 italic font-mono">
                   Click &quot;Submit Code&quot; to compile and evaluate your solution against test cases...
                 </span>
               )}
@@ -262,8 +315,8 @@ All constraints satisfied.`}
             <div className="space-y-3">
               {testResults ? (
                 <>
-                  {/* Certificate Award Banner if user reached 40 */}
-                  {earnedCertificateId && (
+                  {/* Certificate Award Banner ONLY if user reached 40 AND passed all tests */}
+                  {earnedCertificateId && testResults.allPassed && (isLastQuestion || questionIndex >= totalQuestions) && (
                     <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/20 via-yellow-500/20 to-amber-500/10 border border-amber-500/40 flex flex-col sm:flex-row items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <Trophy className="w-7 h-7 text-amber-400 animate-bounce" />
@@ -285,8 +338,8 @@ All constraints satisfied.`}
                     </div>
                   )}
 
-                  {/* Auto-Advance Countdown Timer */}
-                  {countdown !== null && countdown > 0 && !isLastQuestion && (
+                  {/* Auto-Advance Countdown Timer (ONLY when passed and not last question) */}
+                  {countdown !== null && countdown > 0 && !isLastQuestion && testResults.allPassed && (
                     <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/30 space-y-2.5">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 text-indigo-400 font-bold text-sm">
@@ -319,14 +372,22 @@ All constraints satisfied.`}
                     </div>
                   )}
 
-                  {/* Standard Congratulations Banner */}
-                  {testResults.allPassed && (
+                  {/* Standard Congratulations Banner or Failure Alert */}
+                  {testResults.allPassed ? (
                     <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
                       <div className="flex items-center gap-2 text-emerald-400 font-bold">
                         <Award className="w-5 h-5" />
                         <span>Congratulations! All test cases passed.</span>
                       </div>
                       <span className="text-amber-400 font-extrabold">+{points} XP Earned</span>
+                    </div>
+                  ) : (
+                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-rose-400 font-bold">
+                        <XCircle className="w-5 h-5" />
+                        <span>Validation Failed: Code does not satisfy constraints.</span>
+                      </div>
+                      <span className="text-muted-foreground text-xs font-semibold">0 XP</span>
                     </div>
                   )}
 
@@ -335,19 +396,35 @@ All constraints satisfied.`}
                     {testResults.cases.map((c, i) => (
                       <div
                         key={i}
-                        className="p-3 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between"
+                        className={cn(
+                          "p-3 rounded-xl border flex items-center justify-between transition-all",
+                          c.status === "PASSED"
+                            ? "bg-white/[0.02] border-white/5"
+                            : "bg-rose-500/[0.04] border-rose-500/20"
+                        )}
                       >
                         <div className="flex items-center gap-2.5">
-                          <Check className="w-4 h-4 text-emerald-400" />
-                          <span className="font-bold text-white">{c.name}</span>
+                          {c.status === "PASSED" ? (
+                            <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                          ) : (
+                            <XCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+                          )}
+                          <span className="font-bold text-white text-xs">{c.name}</span>
                         </div>
-                        <span className="text-xs text-muted-foreground">{c.message}</span>
+                        <span
+                          className={cn(
+                            "text-xs max-w-sm text-right",
+                            c.status === "PASSED" ? "text-muted-foreground" : "text-rose-400 font-medium"
+                          )}
+                        >
+                          {c.message}
+                        </span>
                       </div>
                     ))}
                   </div>
                 </>
               ) : (
-                <span className="text-gray-600 italic">
+                <span className="text-gray-600 italic font-mono">
                   No submission evaluations yet.
                 </span>
               )}

@@ -67,6 +67,7 @@ export default function CoursePlayerPage({
       tableSchema: targetLesson.tableSchema,
       hints: targetLesson.hints,
       initialCode: targetLesson.initialCode || (subjectId === "python" ? "# Write your solution here\n" : "-- Write solution here\n"),
+      solutionCode: targetLesson.solutionCode,
       language: targetLesson.language || getLanguage(subjectId),
     };
   } else if (session && session.questions.length > 0) {
@@ -106,6 +107,11 @@ export default function CoursePlayerPage({
         <CodeEditorPanel
           language={currentQuestion?.language || getLanguage(subjectId)}
           initialCode={currentQuestion?.initialCode || (subjectId === "python" ? "# Write your solution here\n" : "-- Write your solution here\n")}
+          solutionCode={currentQuestion?.solutionCode}
+          sampleInput={currentQuestion?.sampleInput}
+          sampleOutput={currentQuestion?.sampleOutput}
+          constraints={currentQuestion?.constraints}
+          tableSchema={currentQuestion?.tableSchema}
           points={currentQuestion?.points || 30}
           subjectId={subjectId}
           moduleId={moduleId}
