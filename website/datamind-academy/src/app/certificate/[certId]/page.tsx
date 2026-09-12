@@ -194,26 +194,7 @@ export default function CertificatePage({ params }: { params: { certId: string }
 
   useEffect(() => {
     const rawCertId = params.certId || "";
-    if (
-      rawCertId.toLowerCase().includes("spec") ||
-      rawCertId.toLowerCase().includes("bidev") ||
-      rawCertId.toLowerCase().includes("track")
-    ) {
-      let track = "bi-developer";
-      if (rawCertId.toLowerCase().includes("analyst")) track = "data-analyst";
-      else if (rawCertId.toLowerCase().includes("engineer") && !rawCertId.toLowerCase().includes("ai")) track = "data-engineer";
-      else if (rawCertId.toLowerCase().includes("scientist")) track = "data-scientist";
-      else if (rawCertId.toLowerCase().includes("ai")) track = "ai-engineer";
-      window.location.href = `/certificate/specialization/${track}`;
-      return;
-    }
-
     let found = getCertificateById(rawCertId);
-    if (found?.isSpecialization) {
-      window.location.href = `/certificate/specialization/${found.trackId || "bi-developer"}`;
-      return;
-    }
-
     const activeUser = getActiveUser();
 
     // The user's name is strictly determined by their username in datamind_user

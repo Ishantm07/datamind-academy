@@ -14,8 +14,6 @@ import {
   isTheoryCompleted,
   isModuleChallengeCompleted,
   isFinalChallengeUnlocked,
-  completeSpecializationForDemo,
-  resetTrackProgress,
   UserProgressState,
 } from "@/lib/progressStore";
 import {
@@ -43,36 +41,14 @@ export default function TrackDetailPage({ params }: { params: { trackId: string 
   const [progressMap, setProgressMap] = useState<Record<string, UserProgressState>>({});
   const [isLoaded, setIsLoaded] = useState(false);
 
-  const refreshProgress = () => {
+  useEffect(() => {
     const map: Record<string, UserProgressState> = {};
     track.subjects.forEach((subId) => {
       map[subId] = getSubjectProgress(subId);
     });
     setProgressMap(map);
-  };
-
-  useEffect(() => {
-    // For demo purposes, auto-complete bi-developer if user arrives here so demo is immediately live!
-    if (track.id === "bi-developer") {
-      const p1 = getSubjectProgress("sql");
-      const p2 = getSubjectProgress("powerbi");
-      if (!p1.finalChallengePassed || !p2.finalChallengePassed) {
-        completeSpecializationForDemo("bi-developer");
-      }
-    }
-    refreshProgress();
     setIsLoaded(true);
   }, [track]);
-
-  const handleDemoComplete = () => {
-    completeSpecializationForDemo(track.id);
-    refreshProgress();
-  };
-
-  const handleDemoReset = () => {
-    resetTrackProgress(track.id);
-    refreshProgress();
-  };
 
   // Constituent subjects metadata
   const trackSubjects = track.subjects
@@ -252,18 +228,9 @@ export default function TrackDetailPage({ params }: { params: { trackId: string 
                     <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
                   </Link>
                 ) : progressPct === 100 ? (
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-center gap-2 w-full rounded-xl px-4 py-2.5 text-xs font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/20">
-                      <GraduationCap className="w-4 h-4" />
-                      <span>Specialization Mastered!</span>
-                    </div>
-                    <Link
-                      href={`/certificate/specialization/${track.id}`}
-                      className="group relative flex items-center justify-center gap-2 w-full rounded-xl px-4 py-3 text-xs font-black text-slate-950 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-amber-300 hover:to-yellow-300 transition-all shadow-xl shadow-amber-500/25"
-                    >
-                      <Award className="w-4 h-4 text-slate-950" />
-                      <span>View Specialization Certificate →</span>
-                    </Link>
+                  <div className="flex items-center justify-center gap-2 w-full rounded-xl px-4 py-3 text-xs font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/20">
+                    <GraduationCap className="w-4 h-4" />
+                    <span>Track 100% Completed!</span>
                   </div>
                 ) : (
                   <Link
@@ -274,28 +241,6 @@ export default function TrackDetailPage({ params }: { params: { trackId: string 
                     <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
                   </Link>
                 )}
-
-                {/* Interactive Demo Simulation Controls */}
-                <div className="mt-4 pt-3.5 border-t border-white/10 flex items-center gap-2">
-                  <button
-                    onClick={handleDemoComplete}
-                    className="flex-1 py-1.5 px-2 rounded-lg text-[11px] font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition-all flex items-center justify-center gap-1.5 shadow-sm"
-                    title="Simulate 100% completion of this specialization and view certificate"
-                  >
-                    <Sparkles className="w-3 h-3 text-amber-400" />
-                    <span>Demo 100% Complete</span>
-                  </button>
-                  {progressPct > 0 && (
-                    <button
-                      onClick={handleDemoReset}
-                      className="py-1.5 px-2.5 rounded-lg text-[11px] font-medium text-muted-foreground hover:text-rose-400 bg-white/5 hover:bg-white/10 transition-colors flex items-center gap-1"
-                      title="Reset progress for this track"
-                    >
-                      <RotateCcw className="w-3 h-3" />
-                      <span>Reset</span>
-                    </button>
-                  )}
-                </div>
 
                 {nextAction && (
                   <p className="text-[11px] text-muted-foreground text-center mt-2.5 truncate">
@@ -599,39 +544,6 @@ export default function TrackDetailPage({ params }: { params: { trackId: string 
               );
             })}
           </div>
-
-          {/* Grand Specialization Credential Showcase Banner */}
-          {progressPct === 100 && (
-            <div className="glass-card rounded-3xl p-8 sm:p-10 border-2 border-amber-500/40 bg-gradient-to-r from-amber-500/10 via-purple-500/5 to-indigo-500/10 shadow-2xl shadow-amber-500/10 mt-16 text-center relative overflow-hidden">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-amber-500/30 text-3xl">
-                🎓
-              </div>
-              <span className="text-[11px] font-cinzel font-black uppercase tracking-[0.2em] text-amber-400 bg-amber-500/10 border border-amber-500/30 px-3.5 py-1 rounded-full">
-                Verified Executive Credential
-              </span>
-              <h3 className="text-2xl sm:text-3xl font-black text-white mt-3.5 mb-2">
-                {track.title} Professional Specialization Diploma
-              </h3>
-              <p className="text-sm text-muted-foreground max-w-xl mx-auto mb-6 leading-relaxed">
-                Congratulations! You have satisfied all multi-disciplinary curriculum modules and passed all comprehensive capstone examinations. Your official specialization credential is cryptographically secured.
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-3">
-                <Link
-                  href={`/certificate/specialization/${track.id}`}
-                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:from-amber-300 hover:to-yellow-300 text-slate-950 font-black text-xs shadow-xl shadow-amber-500/25 flex items-center gap-2 transition-all"
-                >
-                  <Award className="w-4 h-4" /> Open Official Specialization Certificate
-                </Link>
-                <Link
-                  href="/profile?tab=certificates"
-                  className="px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-xs border border-white/10 flex items-center gap-2 transition-all"
-                >
-                  <span>View in Profile Portfolio</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-            </div>
-          )}
         </section>
       </main>
 
