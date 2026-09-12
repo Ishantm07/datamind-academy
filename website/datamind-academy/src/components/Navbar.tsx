@@ -83,18 +83,36 @@ export default function Navbar() {
               <div className="flex items-center gap-3">
                 <Link
                   href="/dashboard"
-                  className="group relative rounded-xl px-5 py-2.5 text-sm font-semibold text-white overflow-hidden transition-all"
+                  className="px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-white hover:bg-white/5 rounded-xl transition-all"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-600 transition-opacity group-hover:opacity-90" />
-                  <span className="relative">Dashboard →</span>
+                  Dashboard
                 </Link>
+
+                <Link
+                  href="/profile"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-all group shadow-sm"
+                  title="View Profile & Accomplishments"
+                >
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white shadow-sm">
+                    {user.name ? user.name[0].toUpperCase() : "U"}
+                  </div>
+                  <div className="text-left hidden lg:block">
+                    <div className="text-xs font-bold text-white group-hover:text-amber-300 transition-colors leading-none">
+                      {user.name}
+                    </div>
+                    <div className="text-[10px] text-amber-400 font-semibold leading-tight flex items-center gap-1 mt-0.5">
+                      <span>🏆 Profile</span>
+                    </div>
+                  </div>
+                </Link>
+
                 <button
                   onClick={() => {
                     localStorage.removeItem("datamind_user");
                     setUser(null);
                     window.location.href = "/";
                   }}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1"
+                  className="text-xs text-muted-foreground hover:text-rose-400 transition-colors px-2 py-1"
                 >
                   Logout
                 </button>
@@ -170,14 +188,50 @@ export default function Navbar() {
                     </Link>
                   </motion.div>
                 ))}
-                <div className="pt-3 flex flex-col gap-2 px-3">
-                  <Link href="/login" className="text-sm font-medium text-center border border-white/10 rounded-xl py-2.5 hover:bg-white/5 transition-colors">
-                    Log in
-                  </Link>
-                  <Link href="/signup" className="text-sm font-semibold text-center bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl py-2.5 hover:opacity-90 transition-opacity">
-                    Start Free →
-                  </Link>
-                </div>
+                {user ? (
+                  <div className="pt-3 flex flex-col gap-2 px-3">
+                    <Link
+                      href="/profile"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center justify-between text-sm font-semibold bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white"
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-md bg-indigo-500 flex items-center justify-center text-xs font-bold">
+                          {user.name ? user.name[0].toUpperCase() : "U"}
+                        </span>
+                        {user.name}
+                      </span>
+                      <span className="text-xs text-amber-400 font-bold">Profile & Badges →</span>
+                    </Link>
+                    <Link
+                      href="/dashboard"
+                      onClick={() => setMenuOpen(false)}
+                      className="text-sm font-semibold text-center bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl py-2.5"
+                    >
+                      Dashboard
+                    </Link>
+                    <button
+                      onClick={() => {
+                        localStorage.removeItem("datamind_user");
+                        setUser(null);
+                        setMenuOpen(false);
+                        window.location.href = "/";
+                      }}
+                      className="text-xs text-center text-rose-400 py-1"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                ) : (
+                  <div className="pt-3 flex flex-col gap-2 px-3">
+                    <Link href="/login" className="text-sm font-medium text-center border border-white/10 rounded-xl py-2.5 hover:bg-white/5 transition-colors">
+                      Log in
+                    </Link>
+                    <Link href="/signup" className="text-sm font-semibold text-center bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl py-2.5 hover:opacity-90 transition-opacity">
+                      Start Free →
+                    </Link>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}

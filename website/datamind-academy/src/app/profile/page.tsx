@@ -1,0 +1,823 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  User,
+  Award,
+  ShieldCheck,
+  Flame,
+  Zap,
+  BookOpen,
+  Download,
+  Settings,
+  Share2,
+  ExternalLink,
+  Pencil,
+  Check,
+  X,
+  ArrowLeft,
+  Sparkles,
+  Lock,
+  Unlock,
+  RefreshCw,
+  LogOut,
+  Target,
+  Trophy,
+} from "lucide-react";
+import {
+  getActiveUser,
+  getSubjectProgress,
+  StoredCertificate,
+  updateCertificateRecipientName,
+  SUBJECT_CERT_DETAILS,
+  SUBJECT_CERT_TITLES,
+} from "@/lib/progressStore";
+import { SUBJECTS } from "@/lib/data";
+
+interface UserProfile {
+  name: string;
+  email: string;
+  xp: number;
+  streak: number;
+  level: number;
+  joinedAt?: string;
+  headline?: string;
+  goal?: string;
+}
+
+interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  isUnlocked: boolean;
+  progress: number;
+  total: number;
+  category: "streak" | "challenges" | "mastery" | "xp";
+}
+
+export default function ProfilePage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab") || "accomplishments";
+
+  const [activeTab, setActiveTab] = useState<"accomplishments" | "certificates" | "settings">(
+    initialTab === "certificates" ? "certificates" : initialTab === "settings" ? "settings" : "accomplishments"
+  );
+
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [certificates, setCertificates] = useState<StoredCertificate[]>([]);
+  const [totalSolved, setTotalSolved] = useState(0);
+  const [subjectProgresses, setSubjectProgresses] = useState<Record<string, number>>({});
+
+  // Settings form state
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editHeadline, setEditHeadline] = useState("");
+  const [editGoal, setEditGoal] = useState("Data Scientist");
+  const [isSaving, setIsSaving] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Reset confirmation modal state
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetSubject, setResetSubject] = useState("all");
+
+  useEffect(() => {
+    // 1. Load User Data
+    const active = getActiveUser();
+    const rawUser = localStorage.getItem("datamind_user");
+    let userData: UserProfile = {
+      name: active?.name || "DataMind Learner",
+      email: active?.email || "student@datamind.academy",
+      xp: 0,
+      streak: 1,
+      level: 1,
+      joinedAt: "September 2026",
+      headline: "Aspiring Data & AI Engineer",
+      goal: "Data Scientist",
+    };
+
+    if (rawUser) {
+      try {
+        const parsed = JSON.parse(rawUser);
+        userData = { ...userData, ...parsed };
+      } catch (e) {}
+    }
+
+    setUser(userData);
+    setEditName(userData.name);
+    setEditEmail(userData.email);
+    setEditHeadline(userData.headline || "Aspiring Data & AI Engineer");
+    setEditGoal(userData.goal || "Data Scientist");
+
+    // 2. Load Certificates
+    const certsStr = localStorage.getItem("datamind_certificates");
+    if (certsStr) {
+      try {
+        const parsed: StoredCertificate[] = JSON.parse(certsStr);
+        setCertificates(parsed);
+      } catch (e) {}
+    }
+
+    // 3. Calculate Subject Progress & Total Questions Solved
+    const subjectIds = ["sql", "python", "powerbi", "ml", "ai"];
+    let solvedCount = 0;
+    const pMap: Record<string, number> = {};
+
+    subjectIds.forEach((sid) => {
+      const p = getSubjectProgress(sid);
+      const count = p.completedQuestionIds?.length || 0;
+      pMap[sid] = count;
+      solvedCount += count;
+    });
+
+    setTotalSolved(solvedCount);
+    setSubjectProgresses(pMap);
+  }, []);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // Save updated profile
+  const handleSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editName.trim()) return;
+
+    setIsSaving(true);
+    const cleanName = editName.trim();
+    const cleanEmail = editEmail.trim();
+
+    // 1. Save to datamind_user
+    const updatedUser: UserProfile = {
+      ...user!,
+      name: cleanName,
+      email: cleanEmail,
+      headline: editHeadline.trim(),
+      goal: editGoal,
+    };
+    localStorage.setItem("datamind_user", JSON.stringify(updatedUser));
+    setUser(updatedUser);
+
+    // 2. Synchronize all certificates with new full legal name
+    const certsStr = localStorage.getItem("datamind_certificates");
+    if (certsStr) {
+      try {
+        const certs: StoredCertificate[] = JSON.parse(certsStr);
+        const updatedCerts = certs.map((c) => ({
+          ...c,
+          recipientName: cleanName,
+          recipientEmail: cleanEmail || c.recipientEmail,
+        }));
+        localStorage.setItem("datamind_certificates", JSON.stringify(updatedCerts));
+        setCertificates(updatedCerts);
+      } catch (e) {}
+    }
+
+    setIsSaving(false);
+    showToast("Profile & legal certificate name updated and synced across all credentials!");
+  };
+
+  // Export User Data Backup (JSON)
+  const handleExportData = () => {
+    const backup = {
+      user,
+      certificates,
+      progress: {
+        sql: getSubjectProgress("sql"),
+        python: getSubjectProgress("python"),
+        powerbi: getSubjectProgress("powerbi"),
+        ml: getSubjectProgress("ml"),
+        ai: getSubjectProgress("ai"),
+      },
+      exportedAt: new Date().toISOString(),
+    };
+
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `DataMind-Portfolio-${user?.name?.replace(/\s+/g, "_") || "User"}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("Learning portfolio data exported successfully!");
+  };
+
+  // Handle Progress Reset
+  const handleResetProgress = () => {
+    if (resetSubject === "all") {
+      ["sql", "python", "powerbi", "ml", "ai"].forEach((sid) => {
+        localStorage.removeItem(`datamind_progress_${sid}`);
+      });
+      localStorage.removeItem("datamind_certificates");
+      setCertificates([]);
+      setTotalSolved(0);
+      setSubjectProgresses({ sql: 0, python: 0, powerbi: 0, ml: 0, ai: 0 });
+      showToast("All subject progress and certificates reset.");
+    } else {
+      localStorage.removeItem(`datamind_progress_${resetSubject}`);
+      setSubjectProgresses((prev) => ({ ...prev, [resetSubject]: 0 }));
+      showToast(`Progress for ${resetSubject.toUpperCase()} reset.`);
+    }
+    setShowResetModal(false);
+  };
+
+  // Handle Sign out
+  const handleLogout = () => {
+    localStorage.removeItem("datamind_user");
+    router.push("/login");
+  };
+
+  // Dynamic Achievements computation
+  const achievements: Achievement[] = [
+    {
+      id: "first_code",
+      title: "First Code Executed",
+      description: "Successfully solve and submit your first programming challenge",
+      icon: "💻",
+      isUnlocked: totalSolved >= 1,
+      progress: Math.min(totalSolved, 1),
+      total: 1,
+      category: "challenges",
+    },
+    {
+      id: "ten_solved",
+      title: "Problem Solver",
+      description: "Complete 10 comprehensive coding challenges",
+      icon: "🎯",
+      isUnlocked: totalSolved >= 10,
+      progress: Math.min(totalSolved, 10),
+      total: 10,
+      category: "challenges",
+    },
+    {
+      id: "halfway",
+      title: "Halfway Master",
+      description: "Complete 20 challenges across the curriculum",
+      icon: "⚡",
+      isUnlocked: totalSolved >= 20,
+      progress: Math.min(totalSolved, 20),
+      total: 20,
+      category: "challenges",
+    },
+    {
+      id: "centurion",
+      title: "Centurion Architect",
+      description: "Complete 40 comprehensive challenges across any discipline",
+      icon: "🛡️",
+      isUnlocked: totalSolved >= 40,
+      progress: Math.min(totalSolved, 40),
+      total: 40,
+      category: "challenges",
+    },
+    {
+      id: "subject_champion",
+      title: "Subject Champion",
+      description: "Earn your first official verified credential and diploma",
+      icon: "🏆",
+      isUnlocked: certificates.length >= 1,
+      progress: Math.min(certificates.length, 1),
+      total: 1,
+      category: "mastery",
+    },
+    {
+      id: "polyglot",
+      title: "Polyglot Engineer",
+      description: "Solve challenges across 2 or more distinct technologies",
+      icon: "🌐",
+      isUnlocked: Object.values(subjectProgresses).filter((c) => c > 0).length >= 2,
+      progress: Math.min(Object.values(subjectProgresses).filter((c) => c > 0).length, 2),
+      total: 2,
+      category: "mastery",
+    },
+    {
+      id: "streak_7",
+      title: "Consistency Master",
+      description: "Maintain a learning streak of active daily development",
+      icon: "🔥",
+      isUnlocked: (user?.streak || 0) >= 1,
+      progress: Math.min(user?.streak || 1, 7),
+      total: 7,
+      category: "streak",
+    },
+    {
+      id: "xp_1000",
+      title: "Grand Master",
+      description: "Accumulate 1,000+ experience points in the academy",
+      icon: "👑",
+      isUnlocked: (user?.xp || 0) >= 1000,
+      progress: Math.min(user?.xp || 0, 1000),
+      total: 1000,
+      category: "xp",
+    },
+  ];
+
+  const unlockedCount = achievements.filter((a) => a.isUnlocked).length;
+
+  return (
+    <div className="min-h-screen bg-[#07070d] text-foreground p-4 sm:p-6 lg:p-8">
+      <div className="max-w-6xl mx-auto space-y-6">
+        {/* Navigation Back Bar */}
+        <div className="flex items-center justify-between">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-white transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back to Dashboard
+          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-xl transition-all"
+            >
+              <LogOut className="w-3.5 h-3.5" /> Sign Out
+            </button>
+          </div>
+        </div>
+
+        {/* Toast Alert */}
+        {toastMessage && (
+          <div className="bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-4 py-2.5 rounded-2xl text-xs text-center font-semibold animate-in fade-in slide-in-from-top-2">
+            ✓ {toastMessage}
+          </div>
+        )}
+
+        {/* =================================================================== */}
+        {/* Profile Header Card */}
+        {/* =================================================================== */}
+        <div className="relative rounded-3xl bg-[#10101c] border border-white/10 p-6 sm:p-8 overflow-hidden shadow-2xl">
+          {/* Subtle Background Glows */}
+          <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col md:flex-row items-center md:items-start gap-6 justify-between">
+            {/* Left: Avatar & User Identity */}
+            <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-600 to-amber-500 p-1 shadow-xl shadow-indigo-500/20">
+                <div className="w-full h-full rounded-2xl bg-[#161626] flex items-center justify-center text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-yellow-400">
+                  {user?.name ? user.name[0].toUpperCase() : "U"}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-bold uppercase tracking-wider">
+                  <ShieldCheck className="w-3 h-3" /> Verified Member
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-black text-white">{user?.name}</h1>
+                <p className="text-xs sm:text-sm text-gray-400">{user?.headline || "Aspiring Data & AI Engineer"}</p>
+                <div className="text-[11px] text-muted-foreground flex items-center justify-center sm:justify-start gap-3 pt-1">
+                  <span>📧 {user?.email}</span>
+                  <span>•</span>
+                  <span>🎯 Goal: {user?.goal || "Data Scientist"}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Quick Stats Pills */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full md:w-auto">
+              <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 text-center">
+                <div className="text-xl mb-0.5">⚡</div>
+                <div className="text-lg font-black text-white">{user?.xp || 0}</div>
+                <div className="text-[10px] text-muted-foreground uppercase font-semibold">Total XP</div>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 text-center">
+                <div className="text-xl mb-0.5">🔥</div>
+                <div className="text-lg font-black text-white">{user?.streak || 1}</div>
+                <div className="text-[10px] text-muted-foreground uppercase font-semibold">Day Streak</div>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 text-center">
+                <div className="text-xl mb-0.5">🏆</div>
+                <div className="text-lg font-black text-amber-400">{certificates.length}</div>
+                <div className="text-[10px] text-muted-foreground uppercase font-semibold">Diplomas</div>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 text-center">
+                <div className="text-xl mb-0.5">🎯</div>
+                <div className="text-lg font-black text-emerald-400">{totalSolved}</div>
+                <div className="text-[10px] text-muted-foreground uppercase font-semibold">Challenges</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* =================================================================== */}
+        {/* Navigation Tabs */}
+        {/* =================================================================== */}
+        <div className="flex items-center gap-2 border-b border-white/10 pb-2">
+          <button
+            onClick={() => setActiveTab("accomplishments")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+              activeTab === "accomplishments"
+                ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                : "text-muted-foreground hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <Trophy className="w-4 h-4" /> Accomplishments & Badges ({unlockedCount}/{achievements.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("certificates")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+              activeTab === "certificates"
+                ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                : "text-muted-foreground hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <Award className="w-4 h-4" /> Diplomas & Credentials ({certificates.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("settings")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+              activeTab === "settings"
+                ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                : "text-muted-foreground hover:text-white hover:bg-white/5"
+            }`}
+          >
+            <Settings className="w-4 h-4" /> Profile Options & Settings
+          </button>
+        </div>
+
+        {/* =================================================================== */}
+        {/* TAB 1: ACCOMPLISHMENTS & BADGES */}
+        {/* =================================================================== */}
+        {activeTab === "accomplishments" && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-white">Your Earned Accomplishments</h2>
+                <p className="text-xs text-muted-foreground">
+                  Track your mastery milestones, coding achievements, and engineering badges.
+                </p>
+              </div>
+              <span className="text-xs text-amber-400 font-mono font-semibold">
+                {Math.round((unlockedCount / achievements.length) * 100)}% Complete
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {achievements.map((item) => (
+                <div
+                  key={item.id}
+                  className={`relative rounded-2xl p-5 border transition-all flex flex-col justify-between ${
+                    item.isUnlocked
+                      ? "bg-[#131422] border-amber-500/30 shadow-lg shadow-amber-500/5 hover:border-amber-500/60"
+                      : "bg-[#0b0c14] border-white/5 opacity-60"
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-3xl">{item.icon}</span>
+                      {item.isUnlocked ? (
+                        <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                          <Unlock className="w-2.5 h-2.5" /> UNLOCKED
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground bg-white/5 px-2 py-0.5 rounded-full">
+                          <Lock className="w-2.5 h-2.5" /> LOCKED
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className="text-sm font-bold text-white mb-1">{item.title}</h3>
+                    <p className="text-xs text-gray-400 leading-relaxed mb-4">{item.description}</p>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="space-y-1.5 pt-2 border-t border-white/5">
+                    <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
+                      <span>Progress</span>
+                      <span>
+                        {item.progress}/{item.total}
+                      </span>
+                    </div>
+                    <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-500 rounded-full ${
+                          item.isUnlocked ? "bg-gradient-to-r from-amber-400 to-yellow-500" : "bg-white/20"
+                        }`}
+                        style={{ width: `${Math.min((item.progress / item.total) * 100, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* =================================================================== */}
+        {/* TAB 2: DIPLOMAS & CREDENTIALS */}
+        {/* =================================================================== */}
+        {activeTab === "certificates" && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-lg font-bold text-white">Your Official Credentials</h2>
+              <p className="text-xs text-muted-foreground">
+                Official verified certificates awarded upon completing 40 challenges in any subject track.
+              </p>
+            </div>
+
+            {certificates.length === 0 ? (
+              <div className="rounded-2xl border border-white/10 bg-[#10101c] p-10 text-center space-y-4">
+                <div className="text-5xl">🎓</div>
+                <h3 className="text-base font-bold text-white">No Diplomas Earned Yet</h3>
+                <p className="text-xs text-gray-400 max-w-md mx-auto leading-relaxed">
+                  Complete all 40 challenges in Python, SQL, Power BI, ML, or AI to unlock your official verified certificate!
+                </p>
+                <Link
+                  href="/subjects"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold text-xs shadow-lg hover:opacity-90 transition-all"
+                >
+                  Explore Subjects →
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {certificates.map((c) => {
+                  const meta = SUBJECT_CERT_DETAILS[c.subjectId?.toLowerCase()] || SUBJECT_CERT_DETAILS.python;
+                  return (
+                    <div
+                      key={c.certificateId}
+                      className="rounded-3xl bg-gradient-to-br from-[#121320] via-[#10101c] to-[#0c0d16] border border-amber-500/30 p-6 space-y-4 shadow-xl relative overflow-hidden"
+                    >
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
+
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-2xl">
+                            {meta.icon}
+                          </div>
+                          <div>
+                            <div className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-400 uppercase tracking-widest">
+                              <ShieldCheck className="w-3 h-3" /> VERIFIED DIPLOMA
+                            </div>
+                            <h3 className="text-base font-bold text-white">{c.subjectTitle}</h3>
+                            <div className="text-[11px] font-mono text-indigo-400">ID: {c.certificateId}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-xs text-gray-300 space-y-1 pt-2 border-t border-white/5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Recipient Name:</span>
+                          <strong className="text-white font-semibold">{c.recipientName}</strong>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Issue Date:</span>
+                          <strong className="text-white font-semibold">{c.issuedAt}</strong>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Verification Hash:</span>
+                          <span className="font-mono text-muted-foreground text-[10px]">
+                            {c.verificationHash?.slice(0, 14)}...
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 pt-2">
+                        <Link
+                          href={`/certificate/${c.certificateId}`}
+                          className="flex-1 text-center py-2 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 hover:opacity-90 text-slate-950 font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" /> View Diploma
+                        </Link>
+                        <button
+                          onClick={() => {
+                            if (navigator.clipboard) {
+                              navigator.clipboard.writeText(`${window.location.origin}/certificate/${c.certificateId}`);
+                              showToast("Certificate verification URL copied!");
+                            }
+                          }}
+                          className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 text-xs transition-all"
+                          title="Share Certificate URL"
+                        >
+                          <Share2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Subject Track Progress Overview */}
+            <div className="pt-6 border-t border-white/10 space-y-4">
+              <h3 className="text-sm font-bold text-white">Track Progress Across Disciplines</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                {SUBJECTS.map((s) => {
+                  const solved = subjectProgresses[s.id] || 0;
+                  const pct = Math.min(Math.round((solved / 40) * 100), 100);
+                  const isFinished = solved >= 40;
+                  return (
+                    <div key={s.id} className="p-4 rounded-2xl bg-[#0f101a] border border-white/5 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-2xl">{s.icon}</span>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            isFinished ? "bg-emerald-500/10 text-emerald-400" : "bg-white/5 text-muted-foreground"
+                          }`}
+                        >
+                          {isFinished ? "COMPLETED" : `${solved}/40`}
+                        </span>
+                      </div>
+                      <div className="text-xs font-bold text-white">{s.title}</div>
+                      <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            isFinished ? "bg-emerald-500" : "bg-indigo-500"
+                          }`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <Link
+                        href={`/learn/${s.id}/${solved > 0 && solved < 40 ? solved + 1 : 1}`}
+                        className="block text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold pt-1 text-right"
+                      >
+                        {isFinished ? "Review Track →" : "Continue Track →"}
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* =================================================================== */}
+        {/* TAB 3: PROFILE OPTIONS & SETTINGS */}
+        {/* =================================================================== */}
+        {activeTab === "settings" && (
+          <div className="space-y-6 max-w-2xl">
+            <div>
+              <h2 className="text-lg font-bold text-white">Profile Options & Account Settings</h2>
+              <p className="text-xs text-muted-foreground">
+                Manage your legal credential name, learning career goals, and portfolio data.
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveProfile} className="rounded-3xl bg-[#10101c] border border-white/10 p-6 space-y-5">
+              {/* Full Legal Name */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                  Full Legal Name (Displayed on Certificates)
+                </label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="e.g. Ishant Mishra"
+                  required
+                  className="w-full px-4 py-2.5 rounded-xl bg-[#181828] border border-white/10 text-white text-sm focus:outline-none focus:border-amber-400 transition-colors"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  This official legal name will automatically appear on all diplomas, verification links, and PDF prints.
+                </p>
+              </div>
+
+              {/* Email Address */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                  Registered Email Address
+                </label>
+                <input
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  placeholder="student@datamind.academy"
+                  required
+                  className="w-full px-4 py-2.5 rounded-xl bg-[#181828] border border-white/10 text-white text-sm focus:outline-none focus:border-indigo-400 transition-colors"
+                />
+              </div>
+
+              {/* Career Goal */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                  Primary Learning Goal
+                </label>
+                <select
+                  value={editGoal}
+                  onChange={(e) => setEditGoal(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-[#181828] border border-white/10 text-white text-sm focus:outline-none focus:border-indigo-400 transition-colors"
+                >
+                  <option value="Data Scientist">Data Scientist</option>
+                  <option value="Data Analyst">Data Analyst</option>
+                  <option value="AI Engineer">AI Engineer</option>
+                  <option value="Machine Learning Engineer">Machine Learning Engineer</option>
+                  <option value="Data Engineer">Data Engineer</option>
+                </select>
+              </div>
+
+              {/* Headline */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                  Professional Bio / Headline
+                </label>
+                <input
+                  type="text"
+                  value={editHeadline}
+                  onChange={(e) => setEditHeadline(e.target.value)}
+                  placeholder="e.g. Python Developer & Data Science Enthusiast"
+                  className="w-full px-4 py-2.5 rounded-xl bg-[#181828] border border-white/10 text-white text-sm focus:outline-none focus:border-indigo-400 transition-colors"
+                />
+              </div>
+
+              <div className="pt-3 flex items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex-1 py-2.5 px-5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 hover:opacity-90 text-slate-950 font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2"
+                >
+                  <Check className="w-4 h-4" /> {isSaving ? "Saving..." : "Save Profile & Sync Credentials"}
+                </button>
+              </div>
+            </form>
+
+            {/* Data Export & Reset Options */}
+            <div className="rounded-3xl bg-[#10101c] border border-white/10 p-6 space-y-4">
+              <h3 className="text-sm font-bold text-white">Portfolio Data & Safety Controls</h3>
+
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 rounded-2xl bg-white/5 border border-white/5">
+                <div>
+                  <div className="text-xs font-bold text-white">Export Learning Portfolio (JSON)</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Download a secure backup of all your earned credentials, XP, and question history.
+                  </div>
+                </div>
+                <button
+                  onClick={handleExportData}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all whitespace-nowrap"
+                >
+                  <Download className="w-3.5 h-3.5" /> Export Data
+                </button>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 rounded-2xl bg-rose-500/5 border border-rose-500/10">
+                <div>
+                  <div className="text-xs font-bold text-rose-300">Reset Subject Curriculum Progress</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Clear answers for a subject track if you wish to retake challenges from question 1.
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowResetModal(true)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-xs font-bold border border-rose-500/20 transition-all whitespace-nowrap"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> Reset Options
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* =================================================================== */}
+      {/* Reset Confirmation Modal */}
+      {/* =================================================================== */}
+      {showResetModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-[#161726] border border-white/10 rounded-3xl p-6 space-y-4 shadow-2xl">
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <RefreshCw className="w-4 h-4 text-rose-400" /> Reset Subject Progress
+            </h3>
+            <p className="text-xs text-gray-300 leading-relaxed">
+              Select which subject progress you want to reset. This allows you to retake questions from the beginning.
+            </p>
+
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground font-semibold">Choose Subject to Reset:</label>
+              <select
+                value={resetSubject}
+                onChange={(e) => setResetSubject(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-[#202138] border border-white/10 text-white text-xs focus:outline-none"
+              >
+                <option value="all">All Subjects & Certificates</option>
+                <option value="python">Python Track Only</option>
+                <option value="sql">SQL Track Only</option>
+                <option value="powerbi">Power BI Track Only</option>
+                <option value="ml">Machine Learning Track Only</option>
+                <option value="ai">Artificial Intelligence Track Only</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={handleResetProgress}
+                className="flex-1 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition-all"
+              >
+                Confirm Reset
+              </button>
+              <button
+                onClick={() => setShowResetModal(false)}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-gray-300 font-semibold text-xs transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -207,9 +207,18 @@ export default function DashboardPage() {
               <span className="text-amber-400 text-sm">⚡</span>
               <span className="text-sm font-bold text-white">{USER.xp} XP</span>
             </div>
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold">
-              {USER.name[0]}
-            </div>
+            <Link
+              href="/profile"
+              className="flex items-center gap-2 group"
+              title="View Profile & Accomplishments"
+            >
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-lg shadow-indigo-500/25 group-hover:ring-2 group-hover:ring-amber-400 transition-all">
+                {USER.name ? USER.name[0].toUpperCase() : "U"}
+              </div>
+              <span className="text-xs font-semibold text-gray-300 group-hover:text-white hidden sm:inline">
+                Profile →
+              </span>
+            </Link>
           </div>
         </div>
       </header>
@@ -369,7 +378,15 @@ export default function DashboardPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
             >
-              <h2 className="text-lg font-bold text-white mb-4">Achievements</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-white">Achievements</h2>
+                <Link
+                  href="/profile?tab=accomplishments"
+                  className="text-xs text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1 transition-colors"
+                >
+                  View All Badges & Milestones →
+                </Link>
+              </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {ACHIEVEMENTS.map((badge) => (
                   <div key={badge.title} className="glass-card rounded-xl p-4 text-center">
@@ -389,7 +406,12 @@ export default function DashboardPage() {
             >
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-white">Earned Certificates</h2>
-                <span className="text-xs text-indigo-400 font-semibold">Verified Credentials</span>
+                <Link
+                  href="/profile?tab=certificates"
+                  className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1"
+                >
+                  Manage Diplomas in Profile →
+                </Link>
               </div>
 
               {certificates.length === 0 ? (
