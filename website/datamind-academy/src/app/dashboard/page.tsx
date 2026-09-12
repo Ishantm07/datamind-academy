@@ -191,6 +191,69 @@ export default function DashboardPage() {
                 ))}
               </div>
             </motion.div>
+
+            {/* Earned Certificates */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.45 }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-white">Earned Certificates</h2>
+                <span className="text-xs text-indigo-400 font-semibold">Verified Credentials</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Link
+                  href="/certificate/DM-SQL-CERTIFIED"
+                  className="glass-card rounded-2xl p-5 border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-yellow-500/5 to-transparent hover:border-amber-500/40 transition-all group"
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-xl">
+                      🏆
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
+                        SQL Mastery & Engineering
+                      </div>
+                      <div className="text-[11px] text-muted-foreground font-mono">40/40 Questions Completed</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-xs pt-2 border-t border-white/5">
+                    <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                      <span>✓</span> Verified Digital Credential
+                    </span>
+                    <span className="text-indigo-400 font-bold group-hover:translate-x-1 transition-transform">
+                      View →
+                    </span>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/certificate/DM-PYTHON-CERTIFIED"
+                  className="glass-card rounded-2xl p-5 border border-indigo-500/20 bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent hover:border-indigo-500/40 transition-all group"
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-xl">
+                      🐍
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold text-white group-hover:text-indigo-300 transition-colors">
+                        Python Core & Data Engineering
+                      </div>
+                      <div className="text-[11px] text-muted-foreground font-mono">40/40 Questions Completed</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-xs pt-2 border-t border-white/5">
+                    <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                      <span>✓</span> Verified Digital Credential
+                    </span>
+                    <span className="text-indigo-400 font-bold group-hover:translate-x-1 transition-transform">
+                      View →
+                    </span>
+                  </div>
+                </Link>
+              </div>
+            </motion.div>
           </div>
 
           {/* Right: Activity Feed (1/3 width) */}

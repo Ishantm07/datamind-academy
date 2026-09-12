@@ -1,24 +1,35 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import Editor from "@monaco-editor/react";
-import { Play, CheckCircle2, XCircle, Terminal, Check, Award } from "lucide-react";
+import { Play, CheckCircle2, XCircle, Terminal, Check, Award, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { recordQuestionCompletion } from "@/lib/progressStore";
 
 interface CodeEditorPanelProps {
   initialCode?: string;
   language?: string;
   points?: number;
+  subjectId?: string;
+  questionId?: string;
+  questionIndex?: number;
+  totalQuestions?: number;
 }
 
 export default function CodeEditorPanel({
   initialCode = "",
   language = "sql",
   points = 30,
+  subjectId = "sql",
+  questionId = "q-1",
+  questionIndex = 1,
+  totalQuestions = 40,
 }: CodeEditorPanelProps) {
   const [code, setCode] = useState(initialCode);
   const [activeTab, setActiveTab] = useState<"output" | "testcases">("output");
   const [isRunning, setIsRunning] = useState(false);
+  const [earnedCertificateId, setEarnedCertificateId] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<{
     submitted: boolean;
     allPassed: boolean;
@@ -41,6 +52,22 @@ export default function CodeEditorPanel({
         ],
       });
       setActiveTab("testcases");
+
+      // Record completion and check for certificate eligibility
+      let userName = "DataMind Learner";
+      try {
+        const userStr = localStorage.getItem("datamind_user");
+        if (userStr) {
+          const u = JSON.parse(userStr);
+          if (u.name) userName = u.name;
+        }
+      } catch (e) {}
+
+      // If user is on question 40 or finishes 40, issue certificate
+      const result = recordQuestionCompletion(subjectId, questionId, points, userName);
+      if (result.certificateId || questionIndex >= 40) {
+        setEarnedCertificateId(result.certificateId || `DM-${subjectId.toUpperCase()}-COMPLETION`);
+      }
     }, 900);
   };
 
@@ -52,17 +79,29 @@ export default function CodeEditorPanel({
           <span className="font-mono text-xs px-2.5 py-1 bg-white/5 rounded-md text-indigo-400 border border-white/5 font-semibold">
             solution.{language === "python" ? "py" : "sql"}
           </span>
+          <span className="text-[11px] text-muted-foreground font-mono">
+            {questionIndex} / {totalQuestions}
+          </span>
         </div>
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
+          {earnedCertificateId && (
+            <Link
+              href={`/certificate/${earnedCertificateId}`}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-400 to-yellow-500 text-black font-extrabold rounded-xl text-xs hover:opacity-90 transition-all shadow-md animate-bounce"
+            >
+              <Trophy className="w-3.5 h-3.5" /> View Certificate
+            </Link>
+          )}
+
           <button
             onClick={handleRunCode}
             disabled={isRunning}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-90 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50 shadow-lg shadow-emerald-500/20"
           >
             <Play className="w-3.5 h-3.5 fill-current" />
-            {isRunning ? "Running Tests..." : "Submit Code"}
+            {isRunning ? "Evaluating Tests..." : "Submit Code"}
           </button>
         </div>
       </div>
@@ -128,9 +167,9 @@ export default function CodeEditorPanel({
             <div className="space-y-2 text-gray-300">
               {testResults ? (
                 <pre className="text-emerald-400">
-{`Executing SQL Query against sandbox database...
-Query completed in 12ms. 
-9 rows returned.`}
+{`Executing sandbox test suites...
+Execution completed in 14ms.
+All constraints satisfied.`}
                 </pre>
               ) : (
                 <span className="text-gray-600 italic">
@@ -144,7 +183,30 @@ Query completed in 12ms.
             <div className="space-y-3">
               {testResults ? (
                 <>
-                  {/* Congratulations Banner */}
+                  {/* Certificate Award Banner if user reached 40 */}
+                  {earnedCertificateId && (
+                    <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/20 via-yellow-500/20 to-amber-500/10 border border-amber-500/40 flex flex-col sm:flex-row items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <Trophy className="w-7 h-7 text-amber-400 animate-bounce" />
+                        <div>
+                          <div className="font-extrabold text-white text-sm">
+                            🏆 Certificate of Completion Unlocked!
+                          </div>
+                          <div className="text-[11px] text-amber-200/80">
+                            You have successfully completed the 40-question {subjectId.toUpperCase()} mastery challenge!
+                          </div>
+                        </div>
+                      </div>
+                      <Link
+                        href={`/certificate/${earnedCertificateId}`}
+                        className="px-4 py-2 bg-gradient-to-r from-amber-400 to-yellow-500 hover:opacity-90 text-black font-extrabold rounded-xl text-xs transition-all shadow-lg flex-shrink-0"
+                      >
+                        Claim Certificate 🎓
+                      </Link>
+                    </div>
+                  )}
+
+                  {/* Standard Congratulations Banner */}
                   {testResults.allPassed && (
                     <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
                       <div className="flex items-center gap-2 text-emerald-400 font-bold">

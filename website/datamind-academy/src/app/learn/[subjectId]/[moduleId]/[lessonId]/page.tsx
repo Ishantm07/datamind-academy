@@ -99,6 +99,10 @@ export default function CoursePlayerPage({
           language={currentQuestion?.language || (subjectId === "python" ? "python" : "sql")}
           initialCode={currentQuestion?.initialCode || (subjectId === "python" ? "# Write your solution here\n" : "-- Write your solution here\n")}
           points={currentQuestion?.points || 30}
+          subjectId={subjectId}
+          questionId={currentQuestion?.id || lessonId}
+          questionIndex={Math.min(lessonNum, 40)}
+          totalQuestions={40}
         />
       </div>
     </main>
