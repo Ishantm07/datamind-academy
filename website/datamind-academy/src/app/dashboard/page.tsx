@@ -13,6 +13,7 @@ import {
   StoredCertificate,
   issueCertificate,
   updateCertificateRecipientName,
+  ensureAllCompletedCertificatesExist,
   SUBJECT_CERT_TITLES,
 } from "@/lib/progressStore";
 
@@ -98,13 +99,8 @@ export default function DashboardPage() {
 
     // Update all certificates and synchronize
     try {
-      const certsStr = localStorage.getItem("datamind_certificates");
-      if (certsStr) {
-        const parsed: StoredCertificate[] = JSON.parse(certsStr);
-        const updated = parsed.map((c) => ({ ...c, recipientName: trimmed }));
-        localStorage.setItem("datamind_certificates", JSON.stringify(updated));
-        setCertificates(updated);
-      }
+      const verified = ensureAllCompletedCertificatesExist(trimmed, (USER as any).email);
+      setCertificates(verified);
     } catch (e) {}
   };
 
@@ -117,51 +113,15 @@ export default function DashboardPage() {
       const p = getSubjectProgress(sid);
       progress[sid] = p;
       total += p.completedQuestionIds.length;
-      if ((p.isCompleted || p.completedQuestionIds.length >= 40) && !p.certificateId) {
-        issueCertificate(sid, USER.name, (USER as any).email);
-      }
     });
 
     setSubjectProgress(progress);
     setTotalLessons(total);
 
-    // Load certificates and auto-correct any mislabeled certificates (e.g. from previous sessions)
+    // Load and auto-heal all completed certificates (preserves both SQL and Python)
     try {
-      const certsStr = localStorage.getItem("datamind_certificates");
-      if (certsStr) {
-        const parsed: StoredCertificate[] = JSON.parse(certsStr);
-        let hasChanges = false;
-        const cleaned = parsed.map((c) => {
-          let sid = c.subjectId?.toLowerCase();
-          const certIdLower = c.certificateId.toLowerCase();
-          if (certIdLower.includes("python")) sid = "python";
-          else if (certIdLower.includes("powerbi")) sid = "powerbi";
-          else if (certIdLower.includes("ml")) sid = "ml";
-          else if (certIdLower.includes("ai")) sid = "ai";
-          else if (certIdLower.includes("sql")) sid = "sql";
-
-          let updated = { ...c };
-          const expectedTitle = sid ? SUBJECT_CERT_TITLES[sid] : null;
-          if (sid && expectedTitle && (c.subjectId !== sid || c.subjectTitle !== expectedTitle)) {
-            hasChanges = true;
-            updated.subjectId = sid;
-            updated.subjectTitle = expectedTitle;
-          }
-
-          // Sync recipient name with logged-in user profile name
-          if (USER.name && USER.name !== "Learner" && USER.name !== "DataMind Learner" && c.recipientName !== USER.name) {
-            hasChanges = true;
-            updated.recipientName = USER.name;
-          }
-
-          return updated;
-        });
-
-        if (hasChanges) {
-          localStorage.setItem("datamind_certificates", JSON.stringify(cleaned));
-        }
-        setCertificates(cleaned);
-      }
+      const verified = ensureAllCompletedCertificatesExist(USER.name, (USER as any).email);
+      setCertificates(verified);
     } catch (e) {}
   }, [USER.name, (USER as any).email]);
 

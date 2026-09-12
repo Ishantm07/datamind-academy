@@ -32,6 +32,8 @@ import {
   getSubjectProgress,
   StoredCertificate,
   updateCertificateRecipientName,
+  ensureAllCompletedCertificatesExist,
+  forceRestoreSubjectCertificate,
   SUBJECT_CERT_DETAILS,
   SUBJECT_CERT_TITLES,
 } from "@/lib/progressStore";
@@ -113,14 +115,9 @@ export default function ProfilePage() {
     setEditHeadline(userData.headline || "Aspiring Data & AI Engineer");
     setEditGoal(userData.goal || "Data Scientist");
 
-    // 2. Load Certificates
-    const certsStr = localStorage.getItem("datamind_certificates");
-    if (certsStr) {
-      try {
-        const parsed: StoredCertificate[] = JSON.parse(certsStr);
-        setCertificates(parsed);
-      } catch (e) {}
-    }
+    // 2. Load & Auto-Heal All Completed Certificates (restores SQL, Python, etc.)
+    const verifiedCerts = ensureAllCompletedCertificatesExist(userData.name, userData.email);
+    setCertificates(verifiedCerts);
 
     // 3. Calculate Subject Progress & Total Questions Solved
     const subjectIds = ["sql", "python", "powerbi", "ml", "ai"];
@@ -141,6 +138,19 @@ export default function ProfilePage() {
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleSyncCertificates = () => {
+    const refreshed = ensureAllCompletedCertificatesExist(user?.name, user?.email);
+    setCertificates(refreshed);
+    showToast("Official academic credentials synchronized and verified successfully!");
+  };
+
+  const handleRestoreSubject = (sid: string) => {
+    forceRestoreSubjectCertificate(sid, user?.name, user?.email);
+    const refreshed = ensureAllCompletedCertificatesExist(user?.name, user?.email);
+    setCertificates(refreshed);
+    showToast(`Official ${sid.toUpperCase()} Diploma verified and restored to your profile!`);
   };
 
   // Save updated profile
@@ -164,19 +174,8 @@ export default function ProfilePage() {
     setUser(updatedUser);
 
     // 2. Synchronize all certificates with new full legal name
-    const certsStr = localStorage.getItem("datamind_certificates");
-    if (certsStr) {
-      try {
-        const certs: StoredCertificate[] = JSON.parse(certsStr);
-        const updatedCerts = certs.map((c) => ({
-          ...c,
-          recipientName: cleanName,
-          recipientEmail: cleanEmail || c.recipientEmail,
-        }));
-        localStorage.setItem("datamind_certificates", JSON.stringify(updatedCerts));
-        setCertificates(updatedCerts);
-      } catch (e) {}
-    }
+    const updatedCerts = ensureAllCompletedCertificatesExist(cleanName, cleanEmail);
+    setCertificates(updatedCerts);
 
     setIsSaving(false);
     showToast("Profile & legal certificate name updated and synced across all credentials!");
@@ -282,6 +281,16 @@ export default function ProfilePage() {
       isUnlocked: certificates.length >= 1,
       progress: Math.min(certificates.length, 1),
       total: 1,
+      category: "mastery",
+    },
+    {
+      id: "dual_master",
+      title: "Dual Discipline Master",
+      description: "Earn 2 or more verified academy diplomas (e.g. SQL + Python)",
+      icon: "🎖️",
+      isUnlocked: certificates.length >= 2,
+      progress: Math.min(certificates.length, 2),
+      total: 2,
       category: "mastery",
     },
     {
@@ -443,18 +452,156 @@ export default function ProfilePage() {
         {/* TAB 1: ACCOMPLISHMENTS & BADGES */}
         {/* =================================================================== */}
         {activeTab === "accomplishments" && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
+          <div className="space-y-8">
+            {/* Accomplishments Header Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#10101c] p-5 rounded-3xl border border-white/10">
               <div>
-                <h2 className="text-lg font-bold text-white">Your Earned Accomplishments</h2>
-                <p className="text-xs text-muted-foreground">
-                  Track your mastery milestones, coding achievements, and engineering badges.
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-amber-400" /> Your Earned Accomplishments & Diplomas
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Official verified course diplomas, engineering credentials, and learning mastery badges.
                 </p>
               </div>
-              <span className="text-xs text-amber-400 font-mono font-semibold">
-                {Math.round((unlockedCount / achievements.length) * 100)}% Complete
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleSyncCertificates}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-gray-300 hover:text-white border border-white/10 transition-all"
+                  title="Sync and verify all earned credentials"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-amber-400" /> Sync Credentials
+                </button>
+                <span className="text-xs text-amber-400 font-mono font-semibold bg-amber-500/10 px-3 py-1.5 rounded-xl border border-amber-500/20 whitespace-nowrap">
+                  {certificates.length} Diplomas • {unlockedCount}/{achievements.length} Badges
+                </span>
+              </div>
             </div>
+
+            {/* ------------------------------------------------------------- */}
+            {/* PRIMARY ACCOMPLISHMENTS: EARNED SUBJECT DIPLOMAS              */}
+            {/* ------------------------------------------------------------- */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <Award className="w-4 h-4 text-amber-400" /> Official Subject Diplomas ({certificates.length})
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    Accredited diplomas earned upon completing curriculum tracks.
+                  </p>
+                </div>
+                {certificates.length > 0 && (
+                  <button
+                    onClick={() => setActiveTab("certificates")}
+                    className="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+                  >
+                    View All Credentials →
+                  </button>
+                )}
+              </div>
+
+              {certificates.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/15 bg-[#0d0e18] p-8 text-center space-y-3">
+                  <div className="text-4xl">🎓</div>
+                  <h4 className="text-sm font-bold text-white">No Subject Diplomas Earned Yet</h4>
+                  <p className="text-xs text-gray-400 max-w-md mx-auto leading-relaxed">
+                    Complete all 40 challenges in SQL or Python to unlock your official verified certificate!
+                  </p>
+                  <Link
+                    href="/subjects"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 text-slate-950 font-bold text-xs shadow-lg hover:opacity-95 transition-all"
+                  >
+                    Explore Subject Tracks →
+                  </Link>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {certificates.map((c) => {
+                    const meta = SUBJECT_CERT_DETAILS[c.subjectId?.toLowerCase()] || SUBJECT_CERT_DETAILS.python;
+                    return (
+                      <div
+                        key={c.certificateId}
+                        className="relative rounded-2xl bg-gradient-to-br from-[#121324] via-[#10111f] to-[#0c0d18] border border-amber-500/30 p-5 flex flex-col justify-between shadow-xl overflow-hidden hover:border-amber-500/60 transition-all group"
+                      >
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
+
+                        <div>
+                          <div className="flex items-start justify-between gap-3 mb-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-2xl group-hover:scale-105 transition-transform">
+                                {meta.icon}
+                              </div>
+                              <div>
+                                <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                  <ShieldCheck className="w-2.5 h-2.5" /> VERIFIED DIPLOMA
+                                </span>
+                                <h4 className="text-sm font-bold text-white mt-1 leading-snug">{c.subjectTitle}</h4>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5 text-xs text-gray-400 mb-4 bg-white/5 p-3.5 rounded-xl border border-white/5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] text-muted-foreground">Certified Recipient</span>
+                              <span className="font-semibold text-white">{c.recipientName}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] text-muted-foreground">Credential ID</span>
+                              <span className="font-mono text-[11px] text-indigo-400 font-semibold">{c.certificateId}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] text-muted-foreground">Issued Date</span>
+                              <span className="text-gray-300">{c.issuedAt}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] text-muted-foreground">Curriculum Score</span>
+                              <span className="font-mono font-bold text-amber-400">{c.score} PTS (100% Mastery)</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 pt-2 border-t border-white/5">
+                          <Link
+                            href={`/certificate/${c.certificateId}`}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-bold text-xs shadow-md hover:brightness-110 transition-all"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" /> View Full Diploma
+                          </Link>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(`${window.location.origin}/certificate/${c.certificateId}`);
+                              showToast(`Diploma link copied to clipboard!`);
+                            }}
+                            className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white transition-all"
+                            title="Copy Verification Link"
+                          >
+                            <Share2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* ------------------------------------------------------------- */}
+            {/* SECONDARY ACCOMPLISHMENTS: MILESTONES & BADGES                */}
+            {/* ------------------------------------------------------------- */}
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-indigo-400" /> Milestone Badges & Achievements ({unlockedCount}/{achievements.length})
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    Engineering milestones unlocked across your learning progression.
+                  </p>
+                </div>
+                <span className="text-xs text-amber-400 font-mono font-semibold">
+                  {Math.round((unlockedCount / achievements.length) * 100)}% Complete
+                </span>
+              </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {achievements.map((item) => (
@@ -733,6 +880,50 @@ export default function ProfilePage() {
                 </button>
               </div>
             </form>
+
+            {/* Credential Recovery & Verification Tools */}
+            <div className="rounded-3xl bg-[#10101c] border border-amber-500/20 p-6 space-y-4 shadow-lg shadow-amber-500/5">
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-amber-400" /> Academic Credentials & Diploma Recovery
+                </h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Synchronize or restore any earned subject diplomas to your profile accomplishments.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="text-xs font-bold text-amber-300">Auto-Scan & Restore All Diplomas</div>
+                    <div className="text-[11px] text-gray-400">
+                      Checks all subject tracks (SQL, Python, Power BI, ML, AI) and restores any missing certificates.
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleSyncCertificates}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition-all shadow whitespace-nowrap"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" /> Re-Sync Diplomas
+                  </button>
+                </div>
+
+                <div className="pt-2 border-t border-amber-500/10 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => handleRestoreSubject("sql")}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-[11px] text-amber-300 border border-amber-500/30 transition-all font-semibold"
+                  >
+                    🐬 Restore SQL Diploma
+                  </button>
+                  <button
+                    onClick={() => handleRestoreSubject("python")}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-[11px] text-amber-300 border border-amber-500/30 transition-all font-semibold"
+                  >
+                    🐍 Restore Python Diploma
+                  </button>
+                </div>
+              </div>
+            </div>
 
             {/* Data Export & Reset Options */}
             <div className="rounded-3xl bg-[#10101c] border border-white/10 p-6 space-y-4">

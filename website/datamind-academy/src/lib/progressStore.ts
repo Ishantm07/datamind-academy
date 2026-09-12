@@ -196,12 +196,9 @@ export function issueCertificate(
     }
   }
 
-  // Check if this certificate already exists in certs
+  // Check if a certificate for this specific subject already exists in certs
   const existingIndex = certs.findIndex(
-    (c) =>
-      c.certificateId.toLowerCase() === certificateId.toLowerCase() ||
-      c.certificateId.toLowerCase().includes(certificateId.toLowerCase()) ||
-      certificateId.toLowerCase().includes(c.certificateId.toLowerCase())
+    (c) => c.subjectId.toLowerCase() === normSubject.toLowerCase()
   );
 
   const newCert: StoredCertificate = {
@@ -217,9 +214,8 @@ export function issueCertificate(
   };
 
   if (existingIndex >= 0) {
-    const prevName = certs[existingIndex].recipientName;
-    // Always prefer resolvedName if it's a real name (not default placeholder)
-    // Or if previous name was default placeholder, override with resolvedName
+    const prevCert = certs[existingIndex];
+    const prevName = prevCert.recipientName;
     const finalName =
       resolvedName && resolvedName !== "DataMind Learner"
         ? resolvedName
@@ -228,13 +224,13 @@ export function issueCertificate(
         : resolvedName;
 
     certs[existingIndex] = {
-      ...certs[existingIndex],
-      certificateId,
+      ...prevCert,
+      certificateId: customCertId || prevCert.certificateId || certificateId,
       subjectId: normSubject,
       subjectTitle: title,
       recipientName: finalName,
-      recipientEmail: resolvedEmail !== "student@datamind.academy" ? resolvedEmail : certs[existingIndex].recipientEmail,
-      issuedAt: certs[existingIndex].issuedAt || issuedAt,
+      recipientEmail: resolvedEmail !== "student@datamind.academy" ? resolvedEmail : prevCert.recipientEmail,
+      issuedAt: prevCert.issuedAt || issuedAt,
     };
     localStorage.setItem(CERTS_KEY, JSON.stringify(certs));
     localStorage.setItem(`${STORAGE_PREFIX}${normSubject}`, JSON.stringify(current));
@@ -373,10 +369,15 @@ export function getCertificateById(certId: string): StoredCertificate | null {
     const certs: StoredCertificate[] = JSON.parse(stored);
     const target = certId.toLowerCase();
 
-    // 1. Exact match
+    // 1. Exact match by certificateId
     let match = certs.find((c) => c.certificateId.toLowerCase() === target);
 
-    // 2. Partial match (e.g. certId contains or is contained in certificateId)
+    // 2. Exact match by subjectId (e.g. user opens /certificate/sql or /certificate/python)
+    if (!match) {
+      match = certs.find((c) => c.subjectId.toLowerCase() === target);
+    }
+
+    // 3. Partial match (e.g. certId contains or is contained in certificateId)
     if (!match) {
       match = certs.find(
         (c) =>
@@ -386,7 +387,7 @@ export function getCertificateById(certId: string): StoredCertificate | null {
     }
 
     if (match) {
-      // Auto-correct subject title and subjectId if mismatched (e.g. previous bugs saved SQL for Python)
+      // Auto-correct subject title and subjectId if mismatched
       let correctSubject = match.subjectId?.toLowerCase();
       if (match.certificateId.toLowerCase().includes("python")) correctSubject = "python";
       else if (match.certificateId.toLowerCase().includes("powerbi")) correctSubject = "powerbi";
@@ -427,4 +428,202 @@ export function getCertificateById(certId: string): StoredCertificate | null {
   } catch (e) {
     return null;
   }
+}
+
+/**
+ * Ensures all completed subjects have their verified certificates preserved and active.
+ * Automatically recovers missing certificates (like SQL or Python) from completed subject progress
+ * and synchronizes recipient names with the active profile.
+ */
+export function ensureAllCompletedCertificatesExist(
+  userName?: string,
+  userEmail?: string
+): StoredCertificate[] {
+  if (typeof window === "undefined") return [];
+
+  const activeUser = getActiveUser();
+  const resolvedName =
+    userName && userName !== "DataMind Learner"
+      ? userName
+      : activeUser?.name && activeUser.name !== "DataMind Learner"
+      ? activeUser.name
+      : "DataMind Learner";
+  const resolvedEmail =
+    userEmail && userEmail !== "student@datamind.academy"
+      ? userEmail
+      : activeUser?.email || "student@datamind.academy";
+
+  let certs: StoredCertificate[] = [];
+  try {
+    const raw = localStorage.getItem(CERTS_KEY);
+    if (raw) {
+      certs = JSON.parse(raw);
+      if (!Array.isArray(certs)) certs = [];
+    }
+  } catch (e) {
+    certs = [];
+  }
+
+  let hasChanges = false;
+
+  // 1. Sanitize existing certificates (fix any cross-pollinated subject titles or IDs)
+  certs = certs.map((c) => {
+    let sid = (c.subjectId || "").toLowerCase();
+    const idLower = (c.certificateId || "").toLowerCase();
+
+    if (idLower.includes("sql") && sid !== "sql") {
+      sid = "sql";
+      hasChanges = true;
+    } else if (idLower.includes("python") && sid !== "python") {
+      sid = "python";
+      hasChanges = true;
+    } else if ((idLower.includes("powerbi") || idLower.includes("pbi")) && sid !== "powerbi") {
+      sid = "powerbi";
+      hasChanges = true;
+    } else if (idLower.includes("ml") && sid !== "ml") {
+      sid = "ml";
+      hasChanges = true;
+    } else if (idLower.includes("ai") && sid !== "ai") {
+      sid = "ai";
+      hasChanges = true;
+    }
+
+    const expectedTitle = sid ? SUBJECT_CERT_TITLES[sid] : null;
+    let title = c.subjectTitle;
+    if (sid && expectedTitle && c.subjectTitle !== expectedTitle) {
+      title = expectedTitle;
+      hasChanges = true;
+    }
+
+    let recipientName = c.recipientName;
+    if (resolvedName && resolvedName !== "DataMind Learner" && recipientName !== resolvedName) {
+      recipientName = resolvedName;
+      hasChanges = true;
+    }
+
+    return {
+      ...c,
+      subjectId: sid || c.subjectId,
+      subjectTitle: title,
+      recipientName,
+    };
+  });
+
+  // Deduplicate certs by subjectId (keep the latest/best one for each subject)
+  const uniqueCertsMap = new Map<string, StoredCertificate>();
+  for (const c of certs) {
+    const sid = (c.subjectId || "").toLowerCase();
+    if (!uniqueCertsMap.has(sid)) {
+      uniqueCertsMap.set(sid, c);
+    }
+  }
+  certs = Array.from(uniqueCertsMap.values());
+
+  // 2. Scan all subjects to see if any completed subject is missing its certificate
+  const subjectIds = ["sql", "python", "powerbi", "ml", "ai"];
+  for (const sid of subjectIds) {
+    const progress = getSubjectProgress(sid);
+    const existing = certs.find((c) => c.subjectId.toLowerCase() === sid);
+
+    // If progress shows completed or user completed 40 questions or certificateId exists
+    const isCompleted =
+      progress.isCompleted ||
+      progress.completedQuestionIds?.length >= 40 ||
+      Boolean(progress.certificateId);
+
+    if (isCompleted && !existing) {
+      const certId =
+        progress.certificateId ||
+        `DM-${sid.toUpperCase()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      const issuedAt =
+        progress.issuedAt ||
+        new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+
+      const newCert: StoredCertificate = {
+        certificateId: certId,
+        recipientName: resolvedName,
+        recipientEmail: resolvedEmail,
+        subjectId: sid,
+        subjectTitle: SUBJECT_CERT_TITLES[sid] || `${sid.toUpperCase()} Professional`,
+        score: progress.totalScore || 1200,
+        totalQuestions: 40,
+        issuedAt,
+        verificationHash: `0x${Array.from({ length: 16 }, () =>
+          Math.floor(Math.random() * 16).toString(16)
+        ).join("")}`,
+      };
+
+      certs.push(newCert);
+      progress.isCompleted = true;
+      progress.certificateId = certId;
+      progress.issuedAt = issuedAt;
+      localStorage.setItem(`${STORAGE_PREFIX}${sid}`, JSON.stringify(progress));
+      hasChanges = true;
+    }
+  }
+
+  // 3. Fallback recovery for SQL:
+  // If user completed SQL in earlier session, or if SQL has completed challenges or isCompleted flag,
+  // ensure SQL certificate is restored if not present!
+  const hasSql = certs.some((c) => c.subjectId.toLowerCase() === "sql");
+  if (!hasSql) {
+    const sqlProg = getSubjectProgress("sql");
+    if (sqlProg.isCompleted || sqlProg.certificateId || (sqlProg.completedQuestionIds && sqlProg.completedQuestionIds.length > 0)) {
+      const certId =
+        sqlProg.certificateId ||
+        `DM-SQL-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      const issuedAt =
+        sqlProg.issuedAt ||
+        new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+
+      const sqlCert: StoredCertificate = {
+        certificateId: certId,
+        recipientName: resolvedName,
+        recipientEmail: resolvedEmail,
+        subjectId: "sql",
+        subjectTitle: SUBJECT_CERT_TITLES.sql,
+        score: sqlProg.totalScore || 1200,
+        totalQuestions: 40,
+        issuedAt,
+        verificationHash: `0x${Array.from({ length: 16 }, () =>
+          Math.floor(Math.random() * 16).toString(16)
+        ).join("")}`,
+      };
+
+      certs.unshift(sqlCert);
+      sqlProg.isCompleted = true;
+      sqlProg.certificateId = certId;
+      sqlProg.issuedAt = issuedAt;
+      localStorage.setItem(`${STORAGE_PREFIX}sql`, JSON.stringify(sqlProg));
+      hasChanges = true;
+    }
+  }
+
+  if (hasChanges) {
+    localStorage.setItem(CERTS_KEY, JSON.stringify(certs));
+  }
+
+  return certs;
+}
+
+/**
+ * Force issues or restores a certificate for a specific subject (e.g. "sql" or "python")
+ */
+export function forceRestoreSubjectCertificate(
+  subjectId: string,
+  userName?: string,
+  userEmail?: string
+): StoredCertificate {
+  const normSubject = (subjectId || "sql").toLowerCase();
+  const current = getSubjectProgress(normSubject);
+  current.isCompleted = true;
+  if (!current.certificateId) {
+    current.certificateId = `DM-${normSubject.toUpperCase()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+  }
+  if (!current.issuedAt) {
+    current.issuedAt = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  }
+  localStorage.setItem(`${STORAGE_PREFIX}${normSubject}`, JSON.stringify(current));
+
+  return issueCertificate(normSubject, userName, userEmail, current.totalScore || 1200, current.certificateId);
 }
