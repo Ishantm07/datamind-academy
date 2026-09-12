@@ -13,9 +13,10 @@ const FOOTER_LINKS = {
   ],
   Tracks: [
     { label: "Data Analyst", href: "/tracks/data-analyst" },
-    { label: "Data Scientist", href: "/tracks/data-scientist" },
-    { label: "AI Engineer", href: "/tracks/ai-engineer" },
     { label: "BI Developer", href: "/tracks/bi-developer" },
+    { label: "Data Engineer", href: "/tracks/data-engineer" },
+    { label: "Data Scientist", href: "/tracks/data-scientist" },
+    { label: "AI & ML Engineer", href: "/tracks/ai-engineer" },
   ],
   Resources: [
     { label: "Cheat Sheets", href: "/resources/cheatsheets" },
