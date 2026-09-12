@@ -5,6 +5,9 @@ export interface UserProgressState {
   isCompleted: boolean;
   certificateId?: string;
   issuedAt?: string;
+  completedTheoryModules: string[];
+  completedModuleChallenges: string[];
+  finalChallengePassed?: boolean;
 }
 
 export interface StoredCertificate {
@@ -23,21 +26,92 @@ const STORAGE_PREFIX = "datamind_progress_";
 const CERTS_KEY = "datamind_certificates";
 
 export function getSubjectProgress(subjectId: string): UserProgressState {
+  const defaultState: UserProgressState = {
+    subjectId,
+    completedQuestionIds: [],
+    totalScore: 0,
+    isCompleted: false,
+    completedTheoryModules: [],
+    completedModuleChallenges: [],
+    finalChallengePassed: false,
+  };
+
   if (typeof window === "undefined") {
-    return { subjectId, completedQuestionIds: [], totalScore: 0, isCompleted: false };
+    return defaultState;
   }
 
   const data = localStorage.getItem(`${STORAGE_PREFIX}${subjectId}`);
   if (data) {
     try {
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      return {
+        ...defaultState,
+        ...parsed,
+        completedTheoryModules: Array.isArray(parsed.completedTheoryModules) ? parsed.completedTheoryModules : [],
+        completedModuleChallenges: Array.isArray(parsed.completedModuleChallenges) ? parsed.completedModuleChallenges : [],
+      };
     } catch (e) {
       console.error("Failed to parse progress", e);
     }
   }
 
-  return { subjectId, completedQuestionIds: [], totalScore: 0, isCompleted: false };
+  return defaultState;
 }
+
+export function markTheoryCompleted(subjectId: string, moduleId: string): UserProgressState {
+  const normSubject = (subjectId || "sql").toLowerCase();
+  const current = getSubjectProgress(normSubject);
+  if (!current.completedTheoryModules.includes(moduleId)) {
+    current.completedTheoryModules.push(moduleId);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(`${STORAGE_PREFIX}${normSubject}`, JSON.stringify(current));
+    }
+  }
+  return current;
+}
+
+export function isTheoryCompleted(subjectId: string, moduleId: string): boolean {
+  const current = getSubjectProgress(subjectId);
+  return current.completedTheoryModules.includes(moduleId);
+}
+
+export function markModuleChallengeCompleted(subjectId: string, moduleId: string, score: number = 100): UserProgressState {
+  const normSubject = (subjectId || "sql").toLowerCase();
+  const current = getSubjectProgress(normSubject);
+  if (!current.completedModuleChallenges.includes(moduleId)) {
+    current.completedModuleChallenges.push(moduleId);
+    current.totalScore += score;
+    if (typeof window !== "undefined") {
+      localStorage.setItem(`${STORAGE_PREFIX}${normSubject}`, JSON.stringify(current));
+    }
+  }
+  return current;
+}
+
+export function isModuleChallengeCompleted(subjectId: string, moduleId: string): boolean {
+  const current = getSubjectProgress(subjectId);
+  return current.completedModuleChallenges.includes(moduleId);
+}
+
+export function isModuleUnlocked(subjectId: string, moduleId: string): boolean {
+  if (moduleId === "m1") return true;
+  const current = getSubjectProgress(subjectId);
+  if (moduleId === "m2") return current.completedModuleChallenges.includes("m1");
+  if (moduleId === "m3") return current.completedModuleChallenges.includes("m2");
+  if (moduleId === "m4") return current.completedModuleChallenges.includes("m3");
+  return true;
+}
+
+export function isFinalChallengeUnlocked(subjectId: string): boolean {
+  const current = getSubjectProgress(subjectId);
+  return (
+    current.completedModuleChallenges.includes("m1") &&
+    current.completedModuleChallenges.includes("m2") &&
+    current.completedModuleChallenges.includes("m3") &&
+    current.completedModuleChallenges.includes("m4")
+  );
+}
+
 
 export const SUBJECT_CERT_TITLES: Record<string, string> = {
   sql: "SQL Mastery & Relational Database Engineering",

@@ -36,3 +36,23 @@ export type Module = {
   level: "beginner" | "intermediate" | "advanced";
   lessons: Lesson[];
 };
+
+export interface ModuleTheory {
+  moduleId: string; // "m1", "m2", "m3", "m4"
+  title: string;
+  subtitle: string;
+  duration: string;
+  readingMinutes: number;
+  theoryMarkdown: string;
+  keyTakeaways: string[];
+}
+
+export interface SubjectModuleDef {
+  id: string; // "m1", "m2", "m3", "m4"
+  number: number;
+  title: string;
+  description: string;
+  theory: ModuleTheory;
+  challengeCount: number; // 10
+}
+

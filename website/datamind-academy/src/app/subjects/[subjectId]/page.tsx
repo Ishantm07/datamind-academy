@@ -3,285 +3,178 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { SUBJECTS } from "@/lib/data";
 import { notFound } from "next/navigation";
-import { PlayCircle, CheckCircle2, BookOpen } from "lucide-react";
+import { PlayCircle, BookOpen, Trophy, Zap, FileText, Award, Sparkles, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// Fully unlocked curriculum mapping for all subjects
-const OPEN_CURRICULUMS: Record<string, { title: string; description: string; lessons: { title: string; type: string; duration: string }[] }[]> = {
-  sql: [
-    {
-      title: "Module 1: Database Fundamentals & Basic SELECT",
-      description: "Relational concepts, table schemas, WHERE filtering, ORDER BY, and LIMIT.",
-      lessons: [
-        { title: "1.1 What is a Relational Database?", type: "theory", duration: "10 min" },
-        { title: "1.2 Filtering High-Value Customers (WHERE)", type: "exercise", duration: "15 min" },
-      ],
-    },
-    {
-      title: "Module 2: Aggregations & GROUP BY",
-      description: "Summarizing data with COUNT, SUM, AVG, MIN, MAX, and HAVING filter.",
-      lessons: [
-        { title: "2.1 Calculating Departmental Payroll (GROUP BY)", type: "exercise", duration: "20 min" },
-      ],
-    },
-    {
-      title: "Module 3: Multi-Table JOINs & Entity Relationships",
-      description: "INNER, LEFT, RIGHT, FULL OUTER JOINs, and self-joins.",
-      lessons: [
-        { title: "3.1 E-Commerce Customer Orders (LEFT JOIN)", type: "exercise", duration: "25 min" },
-      ],
-    },
-    {
-      title: "Module 4: Subqueries & Common Table Expressions (CTEs)",
-      description: "Nested queries, correlated subqueries, and WITH clauses.",
-      lessons: [
-        { title: "4.1 Identifying Above-Average Spenders (CTE)", type: "exercise", duration: "25 min" },
-      ],
-    },
-    {
-      title: "Module 5: Advanced Window Functions",
-      description: "ROW_NUMBER, RANK, DENSE_RANK, LAG, LEAD, and running totals.",
-      lessons: [
-        { title: "5.1 Monthly Growth & Previous Month Revenue (LAG)", type: "exercise", duration: "30 min" },
-      ],
-    },
-    {
-      title: "Module 6: Database Optimization & Indexing",
-      description: "Execution plans (EXPLAIN), B-Tree indexes, and query performance tuning.",
-      lessons: [
-        { title: "6.1 Index Optimization for Fast Lookups", type: "theory", duration: "20 min" },
-      ],
-    },
-  ],
-  python: [
-    {
-      title: "Module 1: Python Data Model, Core Types & Dynamic Typing",
-      description: "Understand Python object references, memory management, numbers, strings, lists, dicts, tuples, and mutability.",
-      lessons: [
-        { title: "1.1 Theory: Python Object References, Dynamic Typing & Mutability", type: "theory", duration: "12 min" },
-        { title: "1.2 Challenge: Filtering Even Squares (List Comprehensions)", type: "exercise", duration: "15 min" },
-      ],
-    },
-    {
-      title: "Module 2: Statements, Control Flow & Iteration Protocols",
-      description: "Master conditional truth tests, loop constructs (while/for with else), the Iteration Protocol, and comprehensions.",
-      lessons: [
-        { title: "2.1 Theory: The Python Iteration Protocol & Comprehensions", type: "theory", duration: "15 min" },
-        { title: "2.2 Challenge: Character Frequency Counter", type: "exercise", duration: "20 min" },
-      ],
-    },
-    {
-      title: "Module 3: Functions, Scopes (LEGB), Closures & Generators",
-      description: "Deep dive into function definitions, argument passing modes (*args, **kwargs), the LEGB scope lookup rule, closures, and yield generators.",
-      lessons: [
-        { title: "3.1 Theory: LEGB Scope Lookup Rule, Closures & Generators", type: "theory", duration: "18 min" },
-        { title: "3.2 Challenge: Fibonacci Generator with Yield", type: "exercise", duration: "20 min" },
-      ],
-    },
-    {
-      title: "Module 4: Object-Oriented Programming & Operator Overloading",
-      description: "Classes as object factories, encapsulation, inheritance hierarchies, MRO (Method Resolution Order), and dunder operator overloading methods.",
-      lessons: [
-        { title: "4.1 Theory: OOP Architecture, Inheritance & Operator Overloading", type: "theory", duration: "20 min" },
-        { title: "4.2 Challenge: 2D Vector with Operator Overloading", type: "exercise", duration: "30 min" },
-      ],
-    },
-    {
-      title: "Module 5: Advanced Python: Decorators, Context Managers & Exceptions",
-      description: "Building robust production systems with custom exception hierarchies, context managers (with), and function/class decorators.",
-      lessons: [
-        { title: "5.1 Theory: Decorators, Context Managers & Exception Handling", type: "theory", duration: "20 min" },
-        { title: "5.2 Challenge: Custom Exception Suppressing Context Manager", type: "exercise", duration: "25 min" },
-      ],
-    },
-  ],
-  powerbi: [
-    {
-      title: "Module 1: Power BI Desktop & Data Connections",
-      description: "Connecting to SQL/Excel, Power Query transformations, and M language.",
-      lessons: [
-        { title: "1.1 Transforming Raw Data in Power Query", type: "theory", duration: "20 min" },
-      ],
-    },
-    {
-      title: "Module 2: Data Modeling & Star Schema",
-      description: "Fact tables, Dimension tables, 1-to-Many relationships, and active/inactive joins.",
-      lessons: [
-        { title: "2.1 Designing a Production Star Schema", type: "theory", duration: "25 min" },
-      ],
-    },
-    {
-      title: "Module 3: Advanced DAX Measures",
-      description: "CALCULATE, SUMX, FILTER, Time Intelligence (YTD, YoY), and RLS.",
-      lessons: [
-        { title: "3.1 Writing DAX Measures (CALCULATE & Time Intelligence)", type: "exercise", duration: "30 min" },
-      ],
-    },
-  ],
-  ml: [
-    {
-      title: "Module 1: Linear & Logistic Regression",
-      description: "Cost functions, gradient descent, feature scaling, and binary classification.",
-      lessons: [
-        { title: "1.1 Training Logistic Regression for Customer Churn", type: "exercise", duration: "30 min" },
-      ],
-    },
-    {
-      title: "Module 2: Tree-Based Models & Ensembles",
-      description: "Decision Trees, Random Forests, Gradient Boosting (XGBoost, LightGBM).",
-      lessons: [
-        { title: "2.1 XGBoost Classifier & Feature Importance", type: "exercise", duration: "35 min" },
-      ],
-    },
-    {
-      title: "Module 3: Model Evaluation Metrics",
-      description: "Confusion Matrix, Precision, Recall, F1-Score, ROC-AUC, and Cross-Validation.",
-      lessons: [
-        { title: "3.1 Evaluating Imbalanced Classifiers (F1 vs ROC-AUC)", type: "exercise", duration: "25 min" },
-      ],
-    },
-    {
-      title: "Module 4: Unsupervised Learning & Clustering",
-      description: "K-Means, Hierarchical Clustering, DBSCAN, and PCA.",
-      lessons: [
-        { title: "4.1 Customer Segmentation with K-Means & Elbow Method", type: "exercise", duration: "30 min" },
-      ],
-    },
-    {
-      title: "Module 5: Hyperparameter Tuning & Pipelines",
-      description: "GridSearchCV, RandomizedSearchCV, and Scikit-Learn Pipelines.",
-      lessons: [
-        { title: "5.1 Production ML Pipelines with StandardScaler & Ridge", type: "exercise", duration: "35 min" },
-      ],
-    },
-  ],
-  ai: [
-    {
-      title: "Module 1: Deep Learning Foundations & PyTorch",
-      description: "Tensors, autograd, forward pass, loss functions, and backpropagation.",
-      lessons: [
-        { title: "1.1 Writing Neural Networks from Scratch in PyTorch", type: "exercise", duration: "35 min" },
-      ],
-    },
-    {
-      title: "Module 2: Computer Vision & Convolutional Nets (CNNs)",
-      description: "Convolutions, pooling layers, ResNet architectures, and transfer learning.",
-      lessons: [
-        { title: "2.1 Image Classification with Transfer Learning (ResNet50)", type: "theory", duration: "30 min" },
-      ],
-    },
-    {
-      title: "Module 3: Natural Language Processing & Recurrent Nets",
-      description: "Tokenization, Word Embeddings (Word2Vec), LSTMs, and GRUs.",
-      lessons: [
-        { title: "3.1 Sentiment Analysis with Bidirectional LSTM", type: "exercise", duration: "35 min" },
-      ],
-    },
-    {
-      title: "Module 4: Transformer Architecture & Attention",
-      description: "Self-attention mechanism, Multi-Head Attention, Positional Encoding, and BERT/GPT.",
-      lessons: [
-        { title: "4.1 Implementing Scaled Dot-Product Attention", type: "exercise", duration: "40 min" },
-      ],
-    },
-    {
-      title: "Module 5: Generative AI, Fine-Tuning & LLMs",
-      description: "PEFT/LoRA fine-tuning, HuggingFace Transformers, Quantization, and RAG.",
-      lessons: [
-        { title: "5.1 LoRA Fine-Tuning Large Language Models with HuggingFace", type: "theory", duration: "45 min" },
-      ],
-    },
-  ],
-};
+import { getAllModulesForSubject } from "@/lib/curriculumModules";
 
 export default function SubjectPage({ params }: { params: { subjectId: string } }) {
   const subject = SUBJECTS.find((s) => s.id === params.subjectId);
-  if (!subject) notFound();
 
-  const curriculum = OPEN_CURRICULUMS[params.subjectId] || OPEN_CURRICULUMS["sql"];
+  if (!subject) {
+    notFound();
+  }
+
+  const modules = getAllModulesForSubject(params.subjectId);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-[#07070d] text-foreground">
       <Navbar />
 
       <main className="flex-1">
         {/* Subject Header Banner */}
-        <div className={cn("py-20 border-b relative overflow-hidden", subject.color, subject.borderColor)}>
+        <div className={cn("py-16 md:py-24 border-b relative overflow-hidden", subject.color, subject.borderColor)}>
           <div className="max-w-4xl mx-auto px-6 text-center relative z-10">
             <div className="text-6xl mb-6 filter drop-shadow-md">{subject.icon}</div>
             <h1 className={cn("text-4xl md:text-5xl font-black mb-4", subject.textColor)}>
               {subject.title}
             </h1>
-            <p className="text-lg md:text-xl text-foreground/80 max-w-2xl mx-auto mb-8 leading-relaxed">
+            <p className="text-base md:text-lg text-foreground/80 max-w-2xl mx-auto mb-6 leading-relaxed">
               {subject.description}
             </p>
 
-            {/* Free Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold mb-8">
-              <span>✨ 100% Free Unlocked Access — All Modules & Challenges Available</span>
+            {/* Curriculum Structure Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-bold mb-8">
+              <span>✨ 4 In-Depth Theory Modules • 40 Assessment Questions • Verified Diploma</span>
             </div>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
-                href={`/learn/${subject.id}/m1/lesson-1`}
-                className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold rounded-xl hover:opacity-90 transition shadow-xl text-sm"
+                href={`/learn/${subject.id}/m1/theory`}
+                className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black rounded-2xl hover:brightness-110 transition shadow-xl text-sm flex items-center justify-center gap-2"
               >
-                Start Module 1 Now →
+                <BookOpen className="w-4 h-4" /> Start Module 1 Theory →
+              </Link>
+              <Link
+                href={`/learn/${subject.id}/m1/1`}
+                className="w-full sm:w-auto px-6 py-4 bg-white/5 hover:bg-white/10 text-white font-bold rounded-2xl border border-white/10 transition text-sm flex items-center justify-center gap-2"
+              >
+                <Zap className="w-4 h-4 text-amber-400" /> Jump to Module 1 Challenge (10 Qs)
               </Link>
             </div>
           </div>
         </div>
 
-        {/* Curriculum Modules */}
-        <div className="max-w-4xl mx-auto px-6 py-16">
-          <div className="flex items-center justify-between mb-8">
+        {/* Curriculum Modules Syllabus */}
+        <div className="max-w-4xl mx-auto px-6 py-16 space-y-10">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h2 className="text-2xl font-black text-white">Full Course Syllabus</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                {curriculum.length} Modules • Unlocked for all registered users
+              <h2 className="text-2xl font-black text-white">Full Course Syllabus & Progression</h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Read the comprehensive theory module, then conquer the 10-question challenge to advance!
               </p>
+            </div>
+            <div className="text-xs font-mono font-semibold text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded-xl border border-amber-500/20 whitespace-nowrap">
+              4 Modules • 40 Questions
             </div>
           </div>
 
           <div className="space-y-6">
-            {curriculum.map((module, mIdx) => (
-              <div key={mIdx} className="glass-card rounded-2xl overflow-hidden border border-white/5">
-                <div className="bg-white/[0.03] px-6 py-4 border-b border-white/5 flex items-center justify-between">
+            {modules.map((module) => (
+              <div
+                key={module.id}
+                className="glass-card rounded-3xl overflow-hidden border border-white/10 bg-[#0e0f1c] shadow-lg"
+              >
+                {/* Module Header */}
+                <div className="bg-white/[0.03] px-6 py-5 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <h3 className="font-bold text-white text-base">{module.title}</h3>
+                    <span className="text-[10px] font-mono font-bold text-amber-400 uppercase tracking-widest bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                      Module {module.number} of 4
+                    </span>
+                    <h3 className="font-bold text-white text-lg mt-1">{module.title}</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">{module.description}</p>
                   </div>
-                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap">
                     UNLOCKED
                   </span>
                 </div>
 
+                {/* Sub-steps: 1. Theory, 2. 10-Question Challenge */}
                 <div className="divide-y divide-white/5">
-                  {module.lessons.map((lesson, lIdx) => (
-                    <Link
-                      key={lIdx}
-                      href={`/learn/${subject.id}/m${mIdx + 1}/lesson-${lIdx + 1}`}
-                      className="flex items-center justify-between px-6 py-4 hover:bg-white/[0.04] transition-colors group"
-                    >
-                      <div className="flex items-center gap-4">
-                        <PlayCircle className="w-5 h-5 text-indigo-400 group-hover:scale-110 transition-transform" />
-                        <div>
-                          <p className="font-semibold text-sm text-white group-hover:text-indigo-400 transition-colors">
-                            {lesson.title}
-                          </p>
-                          <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                            {lesson.type} • {lesson.duration}
-                          </span>
-                        </div>
+                  {/* Step A: Theory Reading */}
+                  <Link
+                    href={`/learn/${subject.id}/${module.id}/theory`}
+                    className="flex items-center justify-between px-6 py-4 hover:bg-white/[0.04] transition-colors group"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:scale-105 transition-transform">
+                        <FileText className="w-4 h-4" />
                       </div>
-                      <span className="text-xs font-bold text-indigo-400 group-hover:translate-x-1 transition-transform">
-                        Start Lesson →
-                      </span>
-                    </Link>
-                  ))}
+                      <div>
+                        <p className="font-semibold text-sm text-white group-hover:text-indigo-400 transition-colors flex items-center gap-1.5">
+                          <span>{module.number}.1 Theory & Concepts</span>
+                          <span className="text-[10px] font-bold text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded-full">
+                            Reading
+                          </span>
+                        </p>
+                        <span className="text-[11px] text-muted-foreground">
+                          Comprehensive theoretical guide • {module.duration}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-indigo-400 group-hover:translate-x-1 transition-transform flex items-center gap-1">
+                      Read Theory →
+                    </span>
+                  </Link>
+
+                  {/* Step B: 10-Question Module Challenge */}
+                  <Link
+                    href={`/learn/${subject.id}/${module.id}/1`}
+                    className="flex items-center justify-between px-6 py-4 hover:bg-white/[0.04] transition-colors group"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-105 transition-transform">
+                        <Zap className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm text-white group-hover:text-amber-400 transition-colors flex items-center gap-1.5">
+                          <span>{module.number}.2 Module {module.number} Challenge</span>
+                          <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                            10 Questions
+                          </span>
+                        </p>
+                        <span className="text-[11px] text-muted-foreground">
+                          Easy, Medium & Hard coding challenges • Dynamic shuffle on retake
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-amber-400 group-hover:translate-x-1 transition-transform flex items-center gap-1">
+                      Start 10 Qs →
+                    </span>
+                  </Link>
                 </div>
               </div>
             ))}
+
+            {/* Final Assessment Gate: Grand Final Challenge (40 Questions) */}
+            <div className="rounded-3xl bg-gradient-to-br from-[#18182c] via-[#131422] to-[#0c0d16] border border-amber-500/40 p-6 sm:p-8 space-y-4 shadow-xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono font-bold text-amber-400 uppercase tracking-widest bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
+                      CURRICULUM CAPSTONE GATE
+                    </span>
+                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                      DIPLOMA AWARDED
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-amber-400" /> Grand Final Challenge (40 Questions)
+                  </h3>
+                  <p className="text-xs text-gray-300 max-w-xl leading-relaxed">
+                    A comprehensive exam combining 10 questions across each of the 4 modules. Pass all 40 questions to earn your verified course diploma! Every retake dynamically reshuffles questions.
+                  </p>
+                </div>
+
+                <Link
+                  href={`/learn/${subject.id}/final-exam/1`}
+                  className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:brightness-110 text-slate-950 font-black text-xs shadow-lg transition-all flex items-center justify-center gap-2 whitespace-nowrap"
+                >
+                  <Award className="w-4 h-4" /> Start Final Challenge →
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </main>

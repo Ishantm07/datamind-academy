@@ -773,12 +773,23 @@ function ProfileContent() {
                           style={{ width: `${pct}%` }}
                         />
                       </div>
-                      <Link
-                        href={`/learn/${s.id}/${solved > 0 && solved < 40 ? solved + 1 : 1}`}
-                        className="block text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold pt-1 text-right"
-                      >
-                        {isFinished ? "Review Track →" : "Continue Track →"}
-                      </Link>
+                      {(() => {
+                        const modIdx = Math.min(Math.floor(solved / 10) + 1, 4);
+                        const qInMod = (solved % 10) + 1;
+                        const linkUrl = isFinished
+                          ? `/learn/${s.id}/final-exam/1`
+                          : solved === 0
+                          ? `/learn/${s.id}/m1/theory`
+                          : `/learn/${s.id}/m${modIdx}/${qInMod}`;
+                        return (
+                          <Link
+                            href={linkUrl}
+                            className="block text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold pt-1 text-right"
+                          >
+                            {isFinished ? "Review Track →" : "Continue Track →"}
+                          </Link>
+                        );
+                      })()}
                     </div>
                   );
                 })}

@@ -54,15 +54,24 @@ export default function TheoryPanel({
     <div className="flex flex-col h-full bg-background overflow-y-auto border-r border-white/5">
       {/* Top Navigation Bar */}
       <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-3 bg-background/95 backdrop-blur border-b border-white/5">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Link
             href={`/subjects/${subjectId}`}
             className="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
           >
-            ← Back
+            ← Syllabus
           </Link>
+          {moduleId && !moduleId.includes("final") && (
+            <Link
+              href={`/learn/${subjectId}/${moduleId}/theory`}
+              className="text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition-colors flex items-center gap-1 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20"
+              title="Review Module Theory"
+            >
+              <FileText className="w-3 h-3" /> Theory
+            </Link>
+          )}
           <span className="text-xs font-bold text-indigo-400 bg-indigo-500/10 px-2.5 py-0.5 rounded-full border border-indigo-500/20 font-mono">
-            Question {questionIndex} of {totalQuestions}
+            Q {questionIndex} / {totalQuestions}
           </span>
         </div>
         
@@ -72,9 +81,9 @@ export default function TheoryPanel({
             <button
               onClick={onShuffleNewSession}
               className="text-[10px] font-bold text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 px-2.5 py-1 rounded-full border border-purple-500/20 transition-all flex items-center gap-1"
-              title="Generate a fresh randomized set of 40 questions"
+              title={`Generate a fresh randomized set of ${totalQuestions} questions`}
             >
-              <span>🔀</span> New 40 Set
+              <span>🔀</span> Reshuffle
             </button>
           )}
           <span

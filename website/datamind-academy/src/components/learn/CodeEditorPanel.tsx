@@ -6,7 +6,7 @@ import Link from "next/link";
 import Editor from "@monaco-editor/react";
 import { Play, CheckCircle2, XCircle, Terminal, Check, Award, Trophy, SkipForward, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { recordQuestionCompletion, issueCertificate, getActiveUser } from "@/lib/progressStore";
+import { recordQuestionCompletion, issueCertificate, getActiveUser, markModuleChallengeCompleted } from "@/lib/progressStore";
 import { validateSolution, TestCaseResult } from "@/lib/codeValidator";
 
 interface CodeEditorPanelProps {
@@ -24,6 +24,8 @@ interface CodeEditorPanelProps {
   questionId?: string;
   questionIndex?: number;
   totalQuestions?: number;
+  onModuleCompleted?: () => void;
+  isFinalExam?: boolean;
 }
 
 export default function CodeEditorPanel({
@@ -58,7 +60,8 @@ export default function CodeEditorPanel({
 
   // Compute next lesson URL
   const currentLessonNum = parseInt(lessonId.replace(/\D/g, "") || "1", 10);
-  const nextLessonId = `lesson-${currentLessonNum + 1}`;
+  const isLessonDash = lessonId.includes("lesson-");
+  const nextLessonId = isLessonDash ? `lesson-${currentLessonNum + 1}` : `${currentLessonNum + 1}`;
   const nextUrl = `/learn/${subjectId}/${moduleId}/${nextLessonId}`;
   const isLastQuestion = questionIndex >= totalQuestions;
 
@@ -161,20 +164,25 @@ export default function CodeEditorPanel({
 
       const result = recordQuestionCompletion(subjectId, questionId, points, userName, userEmail, questionIndex);
 
-      // Certificate Check — ONLY when completing the 40th challenge (or 40 challenges completed)!
-      const isChallengeCompleted = isLastQuestion || questionIndex >= totalQuestions || (result && result.progress.completedQuestionIds.length >= 40);
-
-      if (isChallengeCompleted) {
-        let certId = result.certificateId;
-        if (!certId) {
-          const cert = issueCertificate(subjectId, userName, userEmail, result.progress.totalScore);
-          certId = cert.certificateId;
+      // Completion Check:
+      if (isLastQuestion) {
+        if (isFinalExam || totalQuestions >= 40) {
+          // Final Exam completed: issue certificate
+          let certId = result.certificateId;
+          if (!certId) {
+            const cert = issueCertificate(subjectId, userName, userEmail, result.progress.totalScore);
+            certId = cert.certificateId;
+          }
+          setEarnedCertificateId(certId);
+        } else {
+          // 10-Question Module Challenge passed:
+          markModuleChallengeCompleted(subjectId, moduleId, result.progress.totalScore);
+          if (onModuleCompleted) {
+            onModuleCompleted();
+          }
         }
-        setEarnedCertificateId(certId);
-      }
-
-      // Auto-advance to next question in 5s ONLY if NOT the last question
-      if (!isLastQuestion) {
+      } else {
+        // Auto-advance to next question in 5s ONLY if NOT the last question
         setCountdown(5);
       }
     }, 700);

@@ -3,44 +3,78 @@
 import { useEffect, useState } from "react";
 import CodeEditorPanel from "@/components/learn/CodeEditorPanel";
 import TheoryPanel from "@/components/learn/TheoryPanel";
-import { getOrCreateSession, refreshSession, UniversalChallengeSession } from "@/lib/universalShuffleEngine";
+import ModuleTheoryReader from "@/components/learn/ModuleTheoryReader";
+import ModuleCompletionModal from "@/components/learn/ModuleCompletionModal";
+import {
+  getOrCreateModuleSession,
+  refreshModuleSession,
+  getOrCreateGrandFinalSession,
+  refreshGrandFinalSession,
+  UniversalChallengeSession,
+} from "@/lib/universalShuffleEngine";
+import { getModuleTheory } from "@/lib/curriculumModules";
 import { getChallenge } from "@/lib/curriculumData";
-import { INTEGRATED_SQL_MODULES, INTEGRATED_PYTHON_MODULES } from "@/lib/integratedCurriculum";
+import { markModuleChallengeCompleted } from "@/lib/progressStore";
 
 export default function CoursePlayerPage({
   params,
 }: {
   params: { subjectId: string; moduleId: string; lessonId: string };
 }) {
-  const subjectId = params.subjectId || "sql";
-  const moduleId = params.moduleId || "m1";
-  const lessonId = params.lessonId || "lesson-1";
+  const subjectId = (params.subjectId || "sql").toLowerCase();
+  const moduleId = (params.moduleId || "m1").toLowerCase();
+  const lessonId = (params.lessonId || "theory").toLowerCase();
 
+  const isTheoryView = lessonId === "theory";
+  const isFinalExam = moduleId === "final-exam" || moduleId === "final-challenge" || moduleId === "final";
+  const totalQuestions = isFinalExam ? 40 : 10;
   const lessonNum = parseInt(lessonId.replace(/\D/g, "") || "1", 10);
+
   const [session, setSession] = useState<UniversalChallengeSession | null>(null);
+  const [showCompletionModal, setShowCompletionModal] = useState<boolean>(false);
 
+  // Load session when in challenge mode
   useEffect(() => {
-    // Load or create a 40-question session for any subject
-    const sess = getOrCreateSession(subjectId);
-    setSession(sess);
-  }, [subjectId]);
+    if (!isTheoryView) {
+      if (isFinalExam) {
+        const sess = getOrCreateGrandFinalSession(subjectId);
+        setSession(sess);
+      } else {
+        const sess = getOrCreateModuleSession(subjectId, moduleId);
+        setSession(sess);
+      }
+    }
+  }, [subjectId, moduleId, isTheoryView, isFinalExam]);
 
-  const handleShuffleNewSession = () => {
-    const freshSession = refreshSession(subjectId);
-    setSession(freshSession);
+  // If in dedicated theory reading view, render ModuleTheoryReader
+  if (isTheoryView) {
+    const theoryModule = getModuleTheory(subjectId, moduleId);
+    if (theoryModule) {
+      return (
+        <ModuleTheoryReader
+          subjectId={subjectId}
+          module={theoryModule}
+        />
+      );
+    }
+  }
+
+  const handleShuffleSession = () => {
+    if (isFinalExam) {
+      const fresh = refreshGrandFinalSession(subjectId);
+      setSession(fresh);
+    } else {
+      const fresh = refreshModuleSession(subjectId, moduleId);
+      setSession(fresh);
+    }
   };
 
-  // Check integrated module curriculum (SQL and Python have detailed lessons)
-  const moduleList =
-    subjectId === "python"
-      ? INTEGRATED_PYTHON_MODULES
-      : subjectId === "sql"
-      ? INTEGRATED_SQL_MODULES
-      : [];
-  const targetModule = moduleList.find((m) => m.id === moduleId);
-  const targetLesson = targetModule?.lessons.find((l) => l.id === lessonId);
+  const handleModuleCompleted = () => {
+    markModuleChallengeCompleted(subjectId, moduleId, 250);
+    setShowCompletionModal(true);
+  };
 
-  // Determine the language for this subject
+  // Determine language
   const getLanguage = (sid: string) => {
     switch (sid) {
       case "sql":
@@ -52,75 +86,79 @@ export default function CoursePlayerPage({
     }
   };
 
+  // Pick current question from session
   let currentQuestion: any = null;
-
-  if (targetLesson) {
-    // Priority 1: Integrated curriculum lesson (SQL/Python theory + exercises)
-    currentQuestion = {
-      title: targetLesson.title,
-      difficulty: targetLesson.difficulty || "EASY",
-      points: targetLesson.points || 20,
-      problemStatement: targetLesson.type === "THEORY" ? targetLesson.theoryMarkdown : targetLesson.problemStatement,
-      sampleInput: targetLesson.sampleInput,
-      sampleOutput: targetLesson.sampleOutput,
-      constraints: targetLesson.constraints,
-      tableSchema: targetLesson.tableSchema,
-      hints: targetLesson.hints,
-      initialCode: targetLesson.initialCode || (subjectId === "python" ? "# Write your solution here\n" : "-- Write solution here\n"),
-      solutionCode: targetLesson.solutionCode,
-      language: targetLesson.language || getLanguage(subjectId),
-    };
-  } else if (session && session.questions.length > 0) {
-    // Priority 2: Shuffled session question (works for ALL subjects)
-    const qIndex = (lessonNum - 1) % session.questions.length;
+  if (session && session.questions.length > 0) {
+    const qIndex = (Math.max(1, lessonNum) - 1) % session.questions.length;
     currentQuestion = session.questions[qIndex];
   } else {
-    // Priority 3: Fallback to curriculumData static challenges
     currentQuestion = getChallenge(subjectId, moduleId, lessonId);
   }
 
+  const moduleNum = parseInt(moduleId.replace(/\D/g, "") || "1", 10);
+
   return (
     <main className="fixed inset-0 z-50 flex flex-col md:flex-row bg-background">
-      {/* Left Pane: Problem Statement / Theory, Schema, Hints, Navigation (50% desktop) */}
+      {/* Left Pane: Question Description, Schemas, Hints, Back/Theory navigation */}
       <div className="w-full md:w-1/2 h-1/2 md:h-full">
         <TheoryPanel
           subjectId={subjectId}
           moduleId={moduleId}
           lessonId={lessonId}
-          lessonTitle={currentQuestion?.title || `${subjectId.toUpperCase()} Challenge`}
+          lessonTitle={currentQuestion?.title || `${subjectId.toUpperCase()} Challenge ${lessonNum}`}
           difficulty={currentQuestion?.difficulty || "MEDIUM"}
-          points={currentQuestion?.points || 30}
+          points={currentQuestion?.points || 25}
           problemStatement={currentQuestion?.problemStatement}
           sampleInput={currentQuestion?.sampleInput}
           sampleOutput={currentQuestion?.sampleOutput}
           constraints={currentQuestion?.constraints}
           tableSchema={currentQuestion?.tableSchema}
           hints={currentQuestion?.hints}
-          questionIndex={Math.min(lessonNum, 40)}
-          totalQuestions={40}
-          onShuffleNewSession={handleShuffleNewSession}
+          questionIndex={Math.min(lessonNum, totalQuestions)}
+          totalQuestions={totalQuestions}
+          onShuffleNewSession={handleShuffleSession}
         />
       </div>
 
-      {/* Right Pane: Code Editor & HackerRank Test Cases (50% desktop) */}
+      {/* Right Pane: Monaco Code Editor & Test Case Evaluation */}
       <div className="w-full md:w-1/2 h-1/2 md:h-full">
         <CodeEditorPanel
           language={currentQuestion?.language || getLanguage(subjectId)}
-          initialCode={currentQuestion?.initialCode || (subjectId === "python" ? "# Write your solution here\n" : "-- Write your solution here\n")}
+          initialCode={
+            currentQuestion?.initialCode ||
+            (subjectId === "python" ? "# Write your solution here\n" : "-- Write your solution here\n")
+          }
           solutionCode={currentQuestion?.solutionCode}
           sampleInput={currentQuestion?.sampleInput}
           sampleOutput={currentQuestion?.sampleOutput}
           constraints={currentQuestion?.constraints}
           tableSchema={currentQuestion?.tableSchema}
-          points={currentQuestion?.points || 30}
+          points={currentQuestion?.points || 25}
           subjectId={subjectId}
           moduleId={moduleId}
           lessonId={lessonId}
-          questionId={currentQuestion?.id || lessonId}
-          questionIndex={Math.min(lessonNum, 40)}
-          totalQuestions={40}
+          questionId={currentQuestion?.id || `${subjectId}-${moduleId}-${lessonNum}`}
+          questionIndex={Math.min(lessonNum, totalQuestions)}
+          totalQuestions={totalQuestions}
+          isFinalExam={isFinalExam}
+          onModuleCompleted={handleModuleCompleted}
         />
       </div>
+
+      {/* Module Completion Modal (pops up on passing 10th question of a module challenge) */}
+      {showCompletionModal && (
+        <ModuleCompletionModal
+          subjectId={subjectId}
+          moduleId={moduleId}
+          moduleNumber={moduleNum}
+          totalScore={250}
+          onRetakeShuffled={() => {
+            handleShuffleSession();
+            setShowCompletionModal(false);
+          }}
+          onClose={() => setShowCompletionModal(false)}
+        />
+      )}
     </main>
   );
 }

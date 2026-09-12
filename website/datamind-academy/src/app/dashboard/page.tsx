@@ -281,12 +281,19 @@ export default function DashboardPage() {
               <div className="space-y-3">
                 {activeCourses.map((course) => {
                   const colors = SUBJECT_COLORS[course.subjectId] || SUBJECT_COLORS.sql;
-                  // Determine which lesson to resume from
-                  const nextLesson = Math.min(course.completed + 1, 40);
+                  // Determine smart resumption URL based on module progression
+                  const modIndex = Math.min(Math.floor(course.completed / 10) + 1, 4);
+                  const qInMod = (course.completed % 10) + 1;
+                  const resumeUrl = course.isCompleted
+                    ? `/learn/${course.subjectId}/final-exam/1`
+                    : course.completed === 0
+                    ? `/learn/${course.subjectId}/m1/theory`
+                    : `/learn/${course.subjectId}/m${modIndex}/${qInMod}`;
+
                   return (
                     <Link
                       key={course.subjectId}
-                      href={`/learn/${course.subjectId}/m1/lesson-${nextLesson}`}
+                      href={resumeUrl}
                       className={`glass-card rounded-2xl p-5 flex items-center gap-5 group hover:bg-white/[0.06] transition-all ${colors.border} border`}
                     >
                       <div className="text-4xl">{course.icon}</div>
