@@ -643,6 +643,7 @@ function ProfileContent() {
                   </div>
                 </div>
               ))}
+              </div>
             </div>
           </div>
         )}
