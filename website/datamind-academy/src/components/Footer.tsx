@@ -19,6 +19,7 @@ const FOOTER_LINKS = {
     { label: "AI & ML Engineer", href: "/tracks/ai-engineer" },
   ],
   Resources: [
+    { label: "Portfolio Projects", href: "/projects" },
     { label: "Cheat Sheets", href: "/resources/cheatsheets" },
     { label: "Dataset Library", href: "/resources/datasets" },
     { label: "Glossary", href: "/resources/glossary" },

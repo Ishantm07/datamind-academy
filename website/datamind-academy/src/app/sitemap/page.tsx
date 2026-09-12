@@ -30,6 +30,7 @@ export default function SitemapPage() {
               <li><Link href="/profile" className="hover:text-indigo-400">User Profile & Diplomas</Link></li>
               <li><Link href="/subjects" className="hover:text-indigo-400">All Subjects Directory</Link></li>
               <li><Link href="/tracks" className="hover:text-indigo-400">Career Tracks Directory</Link></li>
+              <li><Link href="/projects" className="hover:text-indigo-400">Portfolio Projects Hub</Link></li>
             </ul>
           </div>
 
