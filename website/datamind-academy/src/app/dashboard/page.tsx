@@ -11,10 +11,7 @@ import {
   getSubjectProgress,
   UserProgressState,
   StoredCertificate,
-  issueCertificate,
-  updateCertificateRecipientName,
   ensureAllCompletedCertificatesExist,
-  SUBJECT_CERT_TITLES,
 } from "@/lib/progressStore";
 
 type UserData = { name: string; email: string; xp: number; streak: number; level: number };

@@ -1,43 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
 import {
-  User,
   Award,
   ShieldCheck,
-  Flame,
-  Zap,
-  BookOpen,
   Download,
   Settings,
   Share2,
   ExternalLink,
-  Pencil,
   Check,
-  X,
   ArrowLeft,
   Sparkles,
   Lock,
   Unlock,
   RefreshCw,
   LogOut,
-  Target,
   Trophy,
 } from "lucide-react";
 import {
   getActiveUser,
   getSubjectProgress,
   StoredCertificate,
-  updateCertificateRecipientName,
   ensureAllCompletedCertificatesExist,
   forceRestoreSubjectCertificate,
   SUBJECT_CERT_DETAILS,
-  SUBJECT_CERT_TITLES,
 } from "@/lib/progressStore";
-import { SUBJECTS } from "@/lib/data";
 
 interface UserProfile {
   name: string;
@@ -61,14 +50,9 @@ interface Achievement {
   category: "streak" | "challenges" | "mastery" | "xp";
 }
 
-export default function ProfilePage() {
+function ProfileContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const initialTab = searchParams.get("tab") || "accomplishments";
-
-  const [activeTab, setActiveTab] = useState<"accomplishments" | "certificates" | "settings">(
-    initialTab === "certificates" ? "certificates" : initialTab === "settings" ? "settings" : "accomplishments"
-  );
+  const [activeTab, setActiveTab] = useState<"accomplishments" | "certificates" | "settings">("accomplishments");
 
   const [user, setUser] = useState<UserProfile | null>(null);
   const [certificates, setCertificates] = useState<StoredCertificate[]>([]);
@@ -88,6 +72,15 @@ export default function ProfilePage() {
   const [resetSubject, setResetSubject] = useState("all");
 
   useEffect(() => {
+    // 0. Read query tab if present (e.g. /profile?tab=certificates)
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab");
+      if (tab === "certificates" || tab === "settings" || tab === "accomplishments") {
+        setActiveTab(tab);
+      }
+    }
+
     // 1. Load User Data
     const active = getActiveUser();
     const rawUser = localStorage.getItem("datamind_user");
@@ -1010,5 +1003,22 @@ export default function ProfilePage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-[#07070d] text-white">
+          <div className="text-center space-y-3">
+            <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-xs font-mono text-muted-foreground">Loading profile...</p>
+          </div>
+        </div>
+      }
+    >
+      <ProfileContent />
+    </Suspense>
   );
 }
