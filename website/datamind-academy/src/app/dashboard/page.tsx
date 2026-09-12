@@ -6,11 +6,13 @@ import { SUBJECTS } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Pencil, Check, X } from "lucide-react";
 import {
   getSubjectProgress,
   UserProgressState,
   StoredCertificate,
   issueCertificate,
+  updateCertificateRecipientName,
   SUBJECT_CERT_TITLES,
 } from "@/lib/progressStore";
 
@@ -66,6 +68,46 @@ export default function DashboardPage() {
   const [certificates, setCertificates] = useState<StoredCertificate[]>([]);
   const [totalLessons, setTotalLessons] = useState(0);
 
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState("");
+  const [currentName, setCurrentName] = useState("");
+
+  useEffect(() => {
+    if (USER.name) {
+      setCurrentName(USER.name);
+      setEditedName(USER.name);
+    }
+  }, [USER.name]);
+
+  const handleSaveName = () => {
+    const trimmed = editedName.trim();
+    if (!trimmed) return;
+
+    setCurrentName(trimmed);
+    setIsEditingName(false);
+
+    // Update in localStorage datamind_user
+    try {
+      const stored = localStorage.getItem("datamind_user");
+      if (stored) {
+        const u = JSON.parse(stored);
+        u.name = trimmed;
+        localStorage.setItem("datamind_user", JSON.stringify(u));
+      }
+    } catch (e) {}
+
+    // Update all certificates and synchronize
+    try {
+      const certsStr = localStorage.getItem("datamind_certificates");
+      if (certsStr) {
+        const parsed: StoredCertificate[] = JSON.parse(certsStr);
+        const updated = parsed.map((c) => ({ ...c, recipientName: trimmed }));
+        localStorage.setItem("datamind_certificates", JSON.stringify(updated));
+        setCertificates(updated);
+      }
+    } catch (e) {}
+  };
+
   useEffect(() => {
     const progress: Record<string, UserProgressState> = {};
     const subjectIds = ["sql", "python", "powerbi", "ml", "ai"];
@@ -98,16 +140,21 @@ export default function DashboardPage() {
           else if (certIdLower.includes("ai")) sid = "ai";
           else if (certIdLower.includes("sql")) sid = "sql";
 
+          let updated = { ...c };
           const expectedTitle = sid ? SUBJECT_CERT_TITLES[sid] : null;
           if (sid && expectedTitle && (c.subjectId !== sid || c.subjectTitle !== expectedTitle)) {
             hasChanges = true;
-            return {
-              ...c,
-              subjectId: sid,
-              subjectTitle: expectedTitle,
-            };
+            updated.subjectId = sid;
+            updated.subjectTitle = expectedTitle;
           }
-          return c;
+
+          // Sync recipient name with logged-in user profile name
+          if (USER.name && USER.name !== "Learner" && USER.name !== "DataMind Learner" && c.recipientName !== USER.name) {
+            hasChanges = true;
+            updated.recipientName = USER.name;
+          }
+
+          return updated;
         });
 
         if (hasChanges) {
@@ -175,9 +222,54 @@ export default function DashboardPage() {
           transition={{ duration: 0.5 }}
           className="mb-10"
         >
-          <h1 className="text-3xl font-black text-white mb-2">
-            Welcome back, {USER.name} 👋
-          </h1>
+          {isEditingName ? (
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                type="text"
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSaveName();
+                  if (e.key === "Escape") setIsEditingName(false);
+                }}
+                className="px-3 py-1.5 bg-white/10 border border-indigo-500 rounded-xl text-xl font-bold text-white focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                placeholder="Enter your name"
+                autoFocus
+              />
+              <button
+                onClick={handleSaveName}
+                className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-all"
+              >
+                <Check className="w-3.5 h-3.5" /> Save
+              </button>
+              <button
+                onClick={() => {
+                  setEditedName(currentName || USER.name);
+                  setIsEditingName(false);
+                }}
+                className="flex items-center gap-1 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-gray-300 rounded-xl text-xs font-semibold transition-all"
+              >
+                <X className="w-3.5 h-3.5" /> Cancel
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-3xl font-black text-white">
+                Welcome back, {currentName || USER.name} 👋
+              </h1>
+              <button
+                onClick={() => {
+                  setEditedName(currentName || USER.name);
+                  setIsEditingName(true);
+                }}
+                title="Edit your display name"
+                className="text-xs text-muted-foreground hover:text-white px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-colors flex items-center gap-1"
+              >
+                <Pencil className="w-3 h-3" />
+                <span>Edit Name</span>
+              </button>
+            </div>
+          )}
           <p className="text-muted-foreground">
             You&apos;ve completed <span className="text-indigo-400 font-bold">{totalLessons} questions</span> across all subjects. Keep pushing!
           </p>

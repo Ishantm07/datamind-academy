@@ -6,7 +6,7 @@ import Link from "next/link";
 import Editor from "@monaco-editor/react";
 import { Play, CheckCircle2, XCircle, Terminal, Check, Award, Trophy, SkipForward, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { recordQuestionCompletion, issueCertificate } from "@/lib/progressStore";
+import { recordQuestionCompletion, issueCertificate, getActiveUser } from "@/lib/progressStore";
 import { validateSolution, TestCaseResult } from "@/lib/codeValidator";
 
 interface CodeEditorPanelProps {
@@ -155,16 +155,9 @@ export default function CodeEditorPanel({
       }
 
       // IF TESTS PASSED:
-      let userName = "DataMind Learner";
-      let userEmail = "student@datamind.academy";
-      try {
-        const userStr = localStorage.getItem("datamind_user");
-        if (userStr) {
-          const u = JSON.parse(userStr);
-          if (u.name) userName = u.name;
-          if (u.email) userEmail = u.email;
-        }
-      } catch (e) {}
+      const activeUser = getActiveUser();
+      const userName = activeUser && activeUser.name ? activeUser.name : "DataMind Learner";
+      const userEmail = activeUser && activeUser.email ? activeUser.email : "student@datamind.academy";
 
       const result = recordQuestionCompletion(subjectId, questionId, points, userName, userEmail, questionIndex);
 

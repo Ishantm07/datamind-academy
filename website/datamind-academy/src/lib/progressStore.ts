@@ -106,6 +106,34 @@ export const SUBJECT_CERT_DETAILS: Record<
   },
 };
 
+export function getActiveUser(): { name: string; email: string } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("datamind_user");
+    if (!raw) return null;
+    const u = JSON.parse(raw);
+    let name = (u.name || "").trim();
+    const email = (u.email || "").trim();
+
+    // If name is empty or generic, extract formatted name from email (e.g. ishant.mishra@gmail.com -> Ishant Mishra)
+    if ((!name || name.toLowerCase() === "learner" || name.toLowerCase() === "user" || name.toLowerCase() === "datamind learner") && email && email.includes("@")) {
+      const part = email.split("@")[0].replace(/[._-]+/g, " ");
+      name = part
+        .split(" ")
+        .filter(Boolean)
+        .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        .join(" ");
+    }
+
+    return {
+      name: name || "DataMind Learner",
+      email: email || "student@datamind.academy",
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
 export function issueCertificate(
   subjectId: string,
   userName?: string,
@@ -143,19 +171,20 @@ export function issueCertificate(
   current.certificateId = certificateId;
   current.issuedAt = issuedAt;
 
-  // Retrieve user info if not provided
-  let resolvedName = userName;
-  let resolvedEmail = userEmail;
-  if (!resolvedName || !resolvedEmail) {
-    try {
-      const userStr = localStorage.getItem("datamind_user");
-      if (userStr) {
-        const u = JSON.parse(userStr);
-        if (u.name && !resolvedName) resolvedName = u.name;
-        if (u.email && !resolvedEmail) resolvedEmail = u.email;
-      }
-    } catch (e) {}
+  // Retrieve user info from active user or parameters
+  const activeUser = getActiveUser();
+  let resolvedName = userName && userName !== "DataMind Learner" ? userName.trim() : "";
+  let resolvedEmail = userEmail && userEmail !== "student@datamind.academy" ? userEmail.trim() : "";
+
+  if (!resolvedName && activeUser && activeUser.name && activeUser.name !== "DataMind Learner") {
+    resolvedName = activeUser.name;
   }
+  if (!resolvedEmail && activeUser && activeUser.email) {
+    resolvedEmail = activeUser.email;
+  }
+
+  if (!resolvedName) resolvedName = "DataMind Learner";
+  if (!resolvedEmail) resolvedEmail = "student@datamind.academy";
 
   const storedCertsStr = localStorage.getItem(CERTS_KEY);
   let certs: StoredCertificate[] = [];
@@ -177,8 +206,8 @@ export function issueCertificate(
 
   const newCert: StoredCertificate = {
     certificateId,
-    recipientName: resolvedName || "DataMind Learner",
-    recipientEmail: resolvedEmail || "student@datamind.academy",
+    recipientName: resolvedName,
+    recipientEmail: resolvedEmail,
     subjectId: normSubject,
     subjectTitle: title,
     score: score || current.totalScore || 1200,
@@ -188,12 +217,23 @@ export function issueCertificate(
   };
 
   if (existingIndex >= 0) {
+    const prevName = certs[existingIndex].recipientName;
+    // Always prefer resolvedName if it's a real name (not default placeholder)
+    // Or if previous name was default placeholder, override with resolvedName
+    const finalName =
+      resolvedName && resolvedName !== "DataMind Learner"
+        ? resolvedName
+        : prevName && prevName !== "DataMind Learner"
+        ? prevName
+        : resolvedName;
+
     certs[existingIndex] = {
       ...certs[existingIndex],
       certificateId,
       subjectId: normSubject,
       subjectTitle: title,
-      recipientName: resolvedName || certs[existingIndex].recipientName,
+      recipientName: finalName,
+      recipientEmail: resolvedEmail !== "student@datamind.academy" ? resolvedEmail : certs[existingIndex].recipientEmail,
       issuedAt: certs[existingIndex].issuedAt || issuedAt,
     };
     localStorage.setItem(CERTS_KEY, JSON.stringify(certs));
@@ -206,6 +246,63 @@ export function issueCertificate(
   localStorage.setItem(`${STORAGE_PREFIX}${normSubject}`, JSON.stringify(current));
 
   return newCert;
+}
+
+export function updateCertificateRecipientName(certId: string, newName: string): StoredCertificate | null {
+  if (typeof window === "undefined" || !newName.trim()) return null;
+  const cleanName = newName.trim();
+
+  // 1. Sync to datamind_user so all dashboard and app views reflect it!
+  try {
+    const userStr = localStorage.getItem("datamind_user");
+    if (userStr) {
+      const u = JSON.parse(userStr);
+      u.name = cleanName;
+      localStorage.setItem("datamind_user", JSON.stringify(u));
+    } else {
+      localStorage.setItem(
+        "datamind_user",
+        JSON.stringify({
+          name: cleanName,
+          email: "student@datamind.academy",
+          xp: 0,
+          streak: 1,
+          level: 1,
+          joinedAt: new Date().toISOString(),
+        })
+      );
+    }
+  } catch (e) {}
+
+  // 2. Sync to all stored certificates (or target)
+  const stored = localStorage.getItem(CERTS_KEY);
+  if (!stored) return null;
+
+  try {
+    const certs: StoredCertificate[] = JSON.parse(stored);
+    let matched: StoredCertificate | null = null;
+    const target = (certId || "").toLowerCase();
+
+    const updatedCerts = certs.map((c) => {
+      // If target matches or certificate had generic placeholder name, update it
+      const isTarget =
+        !target ||
+        c.certificateId.toLowerCase() === target ||
+        c.certificateId.toLowerCase().includes(target) ||
+        target.includes(c.certificateId.toLowerCase());
+
+      if (isTarget || c.recipientName === "DataMind Learner") {
+        c.recipientName = cleanName;
+        if (!matched && isTarget) matched = c;
+      }
+      return c;
+    });
+
+    localStorage.setItem(CERTS_KEY, JSON.stringify(updatedCerts));
+    return matched || updatedCerts[0] || null;
+  } catch (e) {
+    return null;
+  }
 }
 
 export function recordQuestionCompletion(
@@ -297,10 +394,30 @@ export function getCertificateById(certId: string): StoredCertificate | null {
       else if (match.certificateId.toLowerCase().includes("ai")) correctSubject = "ai";
       else if (match.certificateId.toLowerCase().includes("sql")) correctSubject = "sql";
 
+      let hasChanges = false;
       const expectedTitle = correctSubject ? SUBJECT_CERT_TITLES[correctSubject] : null;
       if (correctSubject && expectedTitle && (match.subjectTitle !== expectedTitle || match.subjectId !== correctSubject)) {
         match.subjectId = correctSubject;
         match.subjectTitle = expectedTitle;
+        hasChanges = true;
+      }
+
+      // Sync recipient name with currently logged-in user if available
+      try {
+        const activeUser = getActiveUser();
+        if (activeUser && activeUser.name && activeUser.name !== "DataMind Learner") {
+          if (match.recipientName !== activeUser.name) {
+            match.recipientName = activeUser.name;
+            hasChanges = true;
+          }
+          if (activeUser.email && (!match.recipientEmail || match.recipientEmail === "student@datamind.academy")) {
+            match.recipientEmail = activeUser.email;
+            hasChanges = true;
+          }
+        }
+      } catch (e) {}
+
+      if (hasChanges) {
         localStorage.setItem(CERTS_KEY, JSON.stringify(certs));
       }
       return match;

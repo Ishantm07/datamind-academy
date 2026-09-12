@@ -21,35 +21,89 @@ export default function LoginPage() {
 
     if (stored) {
       const user = JSON.parse(stored);
-      // Update last active
       user.lastActive = new Date().toISOString();
+      if (form.email && form.email.trim()) {
+        user.email = form.email.trim();
+      }
       localStorage.setItem("datamind_user", JSON.stringify(user));
+
+      // Sync existing certificates with user name
+      if (user.name && user.name !== "DataMind Learner" && user.name !== "Learner") {
+        try {
+          const certsStr = localStorage.getItem("datamind_certificates");
+          if (certsStr) {
+            const certs = JSON.parse(certsStr);
+            const updated = certs.map((c: any) => ({ ...c, recipientName: user.name }));
+            localStorage.setItem("datamind_certificates", JSON.stringify(updated));
+          }
+        } catch (e) {}
+      }
+
       setTimeout(() => router.push("/dashboard"), 500);
     } else {
-      // Auto-create account for demo purposes
+      // Auto-create account with clean capitalized name from email
+      const rawName = form.email.split("@")[0].replace(/[._-]+/g, " ");
+      const formattedName =
+        rawName
+          .split(" ")
+          .filter(Boolean)
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+          .join(" ") || "Learner";
+
+      const cleanEmail = form.email.trim();
       const user = {
-        name: form.email.split("@")[0],
-        email: form.email,
+        name: formattedName,
+        email: cleanEmail,
         xp: 0,
-        streak: 0,
+        streak: 1,
         level: 1,
         joinedAt: new Date().toISOString(),
       };
       localStorage.setItem("datamind_user", JSON.stringify(user));
+
+      // Sync existing certificates to this user name
+      try {
+        const certsStr = localStorage.getItem("datamind_certificates");
+        if (certsStr) {
+          const certs = JSON.parse(certsStr);
+          const updated = certs.map((c: any) => ({
+            ...c,
+            recipientName: formattedName,
+            recipientEmail: cleanEmail,
+          }));
+          localStorage.setItem("datamind_certificates", JSON.stringify(updated));
+        }
+      } catch (e) {}
+
       setTimeout(() => router.push("/dashboard"), 500);
     }
   };
 
   const handleOAuth = (provider: string) => {
+    const providerName = provider === "google" ? "Google Learner" : "GitHub Learner";
     const user = {
-      name: provider === "google" ? "Google User" : "GitHub User",
+      name: providerName,
       email: `user@${provider}.com`,
       xp: 0,
-      streak: 0,
+      streak: 1,
       level: 1,
       joinedAt: new Date().toISOString(),
     };
     localStorage.setItem("datamind_user", JSON.stringify(user));
+
+    try {
+      const certsStr = localStorage.getItem("datamind_certificates");
+      if (certsStr) {
+        const certs = JSON.parse(certsStr);
+        const updated = certs.map((c: any) => ({
+          ...c,
+          recipientName: providerName,
+          recipientEmail: user.email,
+        }));
+        localStorage.setItem("datamind_certificates", JSON.stringify(updated));
+      }
+    } catch (e) {}
+
     router.push("/dashboard");
   };
 

@@ -15,15 +15,31 @@ export default function SignupPage() {
     setLoading(true);
 
     // Simulate account creation — save user to localStorage
+    const fullName = [form.firstName.trim(), form.lastName.trim()].filter(Boolean).join(" ") || "Learner";
+    const cleanEmail = form.email.trim();
     const user = {
-      name: form.firstName + " " + form.lastName,
-      email: form.email,
+      name: fullName,
+      email: cleanEmail,
       xp: 0,
-      streak: 0,
+      streak: 1,
       level: 1,
       joinedAt: new Date().toISOString(),
     };
     localStorage.setItem("datamind_user", JSON.stringify(user));
+
+    // Also auto-sync any existing certificates so their recipientName reflects this new user!
+    try {
+      const certsStr = localStorage.getItem("datamind_certificates");
+      if (certsStr) {
+        const certs = JSON.parse(certsStr);
+        const updated = certs.map((c: any) => ({
+          ...c,
+          recipientName: fullName,
+          recipientEmail: cleanEmail,
+        }));
+        localStorage.setItem("datamind_certificates", JSON.stringify(updated));
+      }
+    } catch (e) {}
 
     // Redirect to dashboard after a brief delay
     setTimeout(() => {
@@ -32,11 +48,12 @@ export default function SignupPage() {
   };
 
   const handleOAuth = (provider: string) => {
+    const providerName = provider === "google" ? "Google Learner" : "GitHub Learner";
     const user = {
-      name: provider === "google" ? "Google User" : "GitHub User",
+      name: providerName,
       email: `user@${provider}.com`,
       xp: 0,
-      streak: 0,
+      streak: 1,
       level: 1,
       joinedAt: new Date().toISOString(),
     };

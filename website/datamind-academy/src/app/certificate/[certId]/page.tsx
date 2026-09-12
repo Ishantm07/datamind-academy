@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Award, CheckCircle, Share2, Printer, ArrowLeft, ShieldCheck } from "lucide-react";
+import { Award, CheckCircle, Share2, Printer, ArrowLeft, ShieldCheck, Pencil, Check, X } from "lucide-react";
 import {
   getCertificateById,
   issueCertificate,
+  updateCertificateRecipientName,
+  getActiveUser,
   StoredCertificate,
   SUBJECT_CERT_DETAILS,
   SUBJECT_CERT_TITLES,
@@ -14,13 +16,25 @@ import {
 export default function CertificatePage({ params }: { params: { certId: string } }) {
   const [cert, setCert] = useState<StoredCertificate | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState("");
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const rawCertId = params.certId || "";
     let found = getCertificateById(rawCertId);
+    const activeUser = getActiveUser();
 
     if (found) {
+      // Sync recipient name with logged-in user if available and different
+      if (activeUser && activeUser.name && activeUser.name !== "DataMind Learner") {
+        if (found.recipientName !== activeUser.name || found.recipientName === "DataMind Learner") {
+          found.recipientName = activeUser.name;
+          updateCertificateRecipientName(found.certificateId, activeUser.name);
+        }
+      }
       setCert(found);
+      setEditedName(found.recipientName);
     } else {
       // Deduce subject from certId string (e.g. DM-PYTHON-1234 -> python)
       const lower = rawCertId.toLowerCase();
@@ -59,23 +73,29 @@ export default function CertificatePage({ params }: { params: { certId: string }
       } catch (e) {}
 
       // Check logged-in user details
-      let learnerName = "DataMind Learner";
-      let learnerEmail = "student@datamind.academy";
-      try {
-        const userStr = localStorage.getItem("datamind_user");
-        if (userStr) {
-          const u = JSON.parse(userStr);
-          if (u.name) learnerName = u.name;
-          if (u.email) learnerEmail = u.email;
-        }
-      } catch (e) {}
+      let learnerName = activeUser?.name || "DataMind Learner";
+      let learnerEmail = activeUser?.email || "student@datamind.academy";
 
       // Issue and persist this certificate so future queries and dashboard reflect it accurately
       const createdCert = issueCertificate(detectedSubject, learnerName, learnerEmail, 1200, rawCertId);
       setCert(createdCert);
+      setEditedName(createdCert.recipientName);
     }
     setLoading(false);
   }, [params.certId]);
+
+  const handleSaveName = () => {
+    const trimmed = editedName.trim();
+    if (!trimmed) return;
+
+    if (cert) {
+      updateCertificateRecipientName(cert.certificateId, trimmed);
+      setCert((prev) => (prev ? { ...prev, recipientName: trimmed } : prev));
+      setIsEditingName(false);
+      setToastMessage("Name updated and synced across all certificates and profile!");
+      setTimeout(() => setToastMessage(null), 3500);
+    }
+  };
 
   if (loading) {
     return (
@@ -98,32 +118,42 @@ export default function CertificatePage({ params }: { params: { certId: string }
   return (
     <div className="min-h-screen bg-[#0a0a12] text-foreground flex flex-col justify-between p-4 sm:p-8">
       {/* Top Action Header (Hidden during print) */}
-      <div className="max-w-5xl mx-auto w-full flex items-center justify-between pb-6 print:hidden">
-        <Link
-          href="/dashboard"
-          className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-white transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" /> Back to Dashboard
-        </Link>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handlePrint}
-            className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-semibold border border-white/10 transition-all shadow-sm"
+      <div className="max-w-5xl mx-auto w-full pb-6 print:hidden">
+        <div className="flex items-center justify-between">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-white transition-colors"
           >
-            <Printer className="w-4 h-4" /> Print / Save PDF
-          </button>
-          <button
-            onClick={() => {
-              if (navigator.clipboard) {
-                navigator.clipboard.writeText(window.location.href);
-                alert("Certificate verification link copied to clipboard!");
-              }
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 text-white rounded-xl text-xs font-semibold transition-all shadow-lg shadow-indigo-500/20"
-          >
-            <Share2 className="w-4 h-4" /> Share Verification
-          </button>
+            <ArrowLeft className="w-4 h-4" /> Back to Dashboard
+          </Link>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-xl text-xs font-semibold border border-white/10 transition-all shadow-sm"
+            >
+              <Printer className="w-4 h-4" /> Print / Save PDF
+            </button>
+            <button
+              onClick={() => {
+                if (navigator.clipboard) {
+                  navigator.clipboard.writeText(window.location.href);
+                  setToastMessage("Certificate verification link copied to clipboard!");
+                  setTimeout(() => setToastMessage(null), 3000);
+                }
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 text-white rounded-xl text-xs font-semibold transition-all shadow-lg shadow-indigo-500/20"
+            >
+              <Share2 className="w-4 h-4" /> Share Verification
+            </button>
+          </div>
         </div>
+
+        {/* Status Toast */}
+        {toastMessage && (
+          <div className="mt-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 px-4 py-2 rounded-xl text-xs text-center font-semibold animate-in fade-in slide-in-from-top-2">
+            ✓ {toastMessage}
+          </div>
+        )}
       </div>
 
       {/* Main Certificate Canvas */}
@@ -150,9 +180,75 @@ export default function CertificatePage({ params }: { params: { certId: string }
         {/* Recipient Statement */}
         <div className="text-center relative z-10 my-10 space-y-3">
           <p className="text-sm text-muted-foreground italic">This is proudly presented to</p>
-          <div className="text-3xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-400 pb-1">
-            {cert?.recipientName}
-          </div>
+
+          {isEditingName ? (
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 max-w-md mx-auto print:hidden">
+              <input
+                type="text"
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSaveName();
+                  if (e.key === "Escape") setIsEditingName(false);
+                }}
+                placeholder="Enter your full legal name"
+                className="px-4 py-2 bg-[#1a182d] border-2 border-amber-400/50 rounded-xl text-xl sm:text-2xl font-bold text-amber-300 text-center focus:outline-none focus:border-amber-400 w-full shadow-inner"
+                autoFocus
+              />
+              <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                <button
+                  onClick={handleSaveName}
+                  className="flex items-center gap-1 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-90 text-white rounded-xl text-xs font-bold shadow-md transition-all"
+                >
+                  <Check className="w-4 h-4" /> Save
+                </button>
+                <button
+                  onClick={() => {
+                    setEditedName(cert?.recipientName || "");
+                    setIsEditingName(false);
+                  }}
+                  className="flex items-center gap-1 px-3 py-2 bg-white/10 hover:bg-white/20 text-gray-300 rounded-xl text-xs font-semibold transition-all"
+                >
+                  <X className="w-4 h-4" /> Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="inline-flex items-center justify-center gap-3 group relative">
+              <div className="text-3xl sm:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-400 pb-1">
+                {cert?.recipientName}
+              </div>
+              <button
+                onClick={() => {
+                  setEditedName(cert?.recipientName || "");
+                  setIsEditingName(true);
+                }}
+                title="Edit name on certificate"
+                className="opacity-70 group-hover:opacity-100 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg p-1.5 transition-all text-xs flex items-center gap-1 print:hidden"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                <span className="text-[11px] font-medium hidden sm:inline">Edit Name</span>
+              </button>
+            </div>
+          )}
+
+          {!isEditingName && (
+            <p className="text-[11px] text-muted-foreground/60 italic print:hidden">
+              Need to adjust your legal name? Click{" "}
+              <button
+                type="button"
+                onClick={() => {
+                  setEditedName(cert?.recipientName || "");
+                  setIsEditingName(true);
+                }}
+                className="text-amber-400/90 underline hover:text-amber-300"
+              >
+                Edit Name
+              </button>{" "}
+              to sync with your profile and official credential.
+            </p>
+          )}
+
           <p className="text-sm sm:text-base text-gray-300 max-w-2xl mx-auto leading-relaxed pt-2">
             for successfully completing all <strong className="text-white">40 Comprehensive Challenges</strong> and demonstrating advanced proficiency in
           </p>
