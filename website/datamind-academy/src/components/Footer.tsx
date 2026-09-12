@@ -28,6 +28,7 @@ const FOOTER_LINKS = {
     { label: "About", href: "/about" },
     { label: "Blog", href: "/blog" },
     { label: "Certifications", href: "/certifications" },
+    { label: "Verify Credential", href: "/verify" },
     { label: "Community", href: "/community" },
   ],
 };

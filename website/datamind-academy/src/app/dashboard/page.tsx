@@ -285,7 +285,7 @@ export default function DashboardPage() {
                   const modIndex = Math.min(Math.floor(course.completed / 10) + 1, 4);
                   const qInMod = (course.completed % 10) + 1;
                   const resumeUrl = course.isCompleted
-                    ? `/learn/${course.subjectId}/final-exam/1`
+                    ? `/learn/${course.subjectId}/final/1`
                     : course.completed === 0
                     ? `/learn/${course.subjectId}/m1/theory`
                     : `/learn/${course.subjectId}/m${modIndex}/${qInMod}`;
@@ -374,7 +374,13 @@ export default function DashboardPage() {
                   href="/profile?tab=certificates"
                   className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1"
                 >
-                  Manage Diplomas in Profile →
+                  Manage in Profile →
+                </Link>
+                <Link
+                  href="/verify"
+                  className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 ml-3"
+                >
+                  Verify in Registry →
                 </Link>
               </div>
 
@@ -389,12 +395,19 @@ export default function DashboardPage() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {certificates.map((cert) => {
-                    const colors = SUBJECT_COLORS[cert.subjectId] || SUBJECT_COLORS.sql;
-                    const icon = SUBJECT_ICONS[cert.subjectId] || "🏆";
+                    const isSpec = cert.isSpecialization || cert.certificateId.startsWith("DM-SPEC");
+                    const colors = isSpec
+                      ? { border: "border-amber-500/40", gradient: "from-amber-500/20 to-purple-950/20" }
+                      : SUBJECT_COLORS[cert.subjectId] || SUBJECT_COLORS.sql;
+                    const icon = isSpec ? "🏆" : SUBJECT_ICONS[cert.subjectId] || "📘";
+                    const certUrl = isSpec
+                      ? `/certificate/specialization/${cert.trackId || "bi-developer"}`
+                      : `/certificate/${cert.certificateId}`;
+
                     return (
                       <Link
                         key={cert.certificateId}
-                        href={`/certificate/${cert.certificateId}`}
+                        href={certUrl}
                         className={`glass-card rounded-2xl p-5 ${colors.border} border bg-gradient-to-br ${colors.gradient} hover:opacity-90 transition-all group`}
                       >
                         <div className="flex items-center gap-3 mb-3">
@@ -402,6 +415,11 @@ export default function DashboardPage() {
                             {icon}
                           </div>
                           <div>
+                            {isSpec && (
+                              <span className="text-[9px] font-mono font-bold text-amber-300 uppercase tracking-wider block">
+                                Specialization Master
+                              </span>
+                            )}
                             <div className="text-sm font-bold text-white group-hover:text-indigo-300 transition-colors">
                               {cert.subjectTitle}
                             </div>
@@ -472,6 +490,36 @@ export default function DashboardPage() {
                   </div>
                 );
               })}
+            </div>
+
+            {/* Active Career Track Widget */}
+            <div className="mt-6 glass-card rounded-2xl p-5 border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-[#10101e] to-purple-950/20 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold text-amber-400 uppercase tracking-widest bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                  CAREER SPECIALIZATION
+                </span>
+                <span className="text-xs font-bold text-white">BI Developer</span>
+              </div>
+              <div className="text-xs font-bold text-white">
+                Business Intelligence Developer
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Dual-pillar specialization uniting SQL Relational Database Engineering with Power BI Enterprise Analytics.
+              </p>
+              <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs">
+                <Link
+                  href="/tracks/bi-developer"
+                  className="text-xs text-amber-400 hover:text-amber-300 font-bold transition-colors flex items-center gap-1"
+                >
+                  Explore Track Roadmap →
+                </Link>
+                <Link
+                  href="/tracks"
+                  className="text-xs text-muted-foreground hover:text-white transition-colors"
+                >
+                  All Tracks
+                </Link>
+              </div>
             </div>
           </motion.div>
         </div>

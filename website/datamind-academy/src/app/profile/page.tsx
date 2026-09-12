@@ -678,11 +678,20 @@ function ProfileContent() {
         {/* =================================================================== */}
         {activeTab === "certificates" && (
           <div className="space-y-6">
-            <div>
-              <h2 className="text-lg font-bold text-white">Your Official Credentials</h2>
-              <p className="text-xs text-muted-foreground">
-                Official verified certificates awarded upon completing 40 challenges in any subject track.
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-white">Your Official Credentials</h2>
+                <p className="text-xs text-muted-foreground">
+                  Official verified certificates awarded upon completing 40 challenges in any subject track.
+                </p>
+              </div>
+              <Link
+                href="/verify"
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-bold text-xs transition-colors flex items-center gap-1.5 w-fit"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Verify in Public Registry →</span>
+              </Link>
             </div>
 
             {certificates.length === 0 ? (
@@ -777,6 +786,13 @@ function ProfileContent() {
                           className="flex-1 text-center py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 hover:opacity-90 text-slate-950 font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5"
                         >
                           <ExternalLink className="w-3.5 h-3.5" /> {isSpec ? "View Specialization Diploma" : "View Full Diploma"}
+                        </Link>
+                        <Link
+                          href={`/verify?id=${c.certificateId}`}
+                          className="p-2.5 rounded-xl bg-white/5 hover:bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs transition-all flex items-center justify-center"
+                          title="Verify in Public Registry"
+                        >
+                          <ShieldCheck className="w-4 h-4" />
                         </Link>
                         <button
                           onClick={() => {
