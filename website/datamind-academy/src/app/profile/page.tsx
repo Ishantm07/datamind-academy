@@ -27,6 +27,7 @@ import {
   forceRestoreSubjectCertificate,
   SUBJECT_CERT_DETAILS,
 } from "@/lib/progressStore";
+import { SUBJECTS } from "@/lib/data";
 
 interface UserProfile {
   name: string;
