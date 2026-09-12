@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import CodeEditorPanel from "@/components/learn/CodeEditorPanel";
 import TheoryPanel from "@/components/learn/TheoryPanel";
-import { getOrSession40Questions, generate40QuestionSession, ShuffledChallengeSession } from "@/lib/sqlShuffleEngine";
-import { getOrSession40PythonQuestions, generate40PythonQuestionSession, ShuffledPythonChallengeSession } from "@/lib/pythonShuffleEngine";
+import { getOrCreateSession, refreshSession, UniversalChallengeSession } from "@/lib/universalShuffleEngine";
 import { getChallenge } from "@/lib/curriculumData";
 import { INTEGRATED_SQL_MODULES, INTEGRATED_PYTHON_MODULES } from "@/lib/integratedCurriculum";
 
@@ -18,38 +17,45 @@ export default function CoursePlayerPage({
   const lessonId = params.lessonId || "lesson-1";
 
   const lessonNum = parseInt(lessonId.replace(/\D/g, "") || "1", 10);
-  const [session, setSession] = useState<ShuffledChallengeSession | ShuffledPythonChallengeSession | null>(null);
+  const [session, setSession] = useState<UniversalChallengeSession | null>(null);
 
   useEffect(() => {
-    if (subjectId === "sql") {
-      const sess = getOrSession40Questions();
-      setSession(sess);
-    } else if (subjectId === "python") {
-      const sess = getOrSession40PythonQuestions();
-      setSession(sess);
-    }
+    // Load or create a 40-question session for any subject
+    const sess = getOrCreateSession(subjectId);
+    setSession(sess);
   }, [subjectId]);
 
   const handleShuffleNewSession = () => {
-    if (subjectId === "sql") {
-      const freshSession = generate40QuestionSession();
-      localStorage.setItem("datamind_sql_40_session", JSON.stringify(freshSession));
-      setSession(freshSession);
-    } else if (subjectId === "python") {
-      const freshSession = generate40PythonQuestionSession();
-      localStorage.setItem("datamind_python_40_session", JSON.stringify(freshSession));
-      setSession(freshSession);
-    }
+    const freshSession = refreshSession(subjectId);
+    setSession(freshSession);
   };
 
-  // Check integrated module curriculum
-  const moduleList = subjectId === "python" ? INTEGRATED_PYTHON_MODULES : INTEGRATED_SQL_MODULES;
+  // Check integrated module curriculum (SQL and Python have detailed lessons)
+  const moduleList =
+    subjectId === "python"
+      ? INTEGRATED_PYTHON_MODULES
+      : subjectId === "sql"
+      ? INTEGRATED_SQL_MODULES
+      : [];
   const targetModule = moduleList.find((m) => m.id === moduleId);
   const targetLesson = targetModule?.lessons.find((l) => l.id === lessonId);
+
+  // Determine the language for this subject
+  const getLanguage = (sid: string) => {
+    switch (sid) {
+      case "sql":
+        return "sql";
+      case "powerbi":
+        return "dax";
+      default:
+        return "python";
+    }
+  };
 
   let currentQuestion: any = null;
 
   if (targetLesson) {
+    // Priority 1: Integrated curriculum lesson (SQL/Python theory + exercises)
     currentQuestion = {
       title: targetLesson.title,
       difficulty: targetLesson.difficulty || "EASY",
@@ -61,12 +67,14 @@ export default function CoursePlayerPage({
       tableSchema: targetLesson.tableSchema,
       hints: targetLesson.hints,
       initialCode: targetLesson.initialCode || (subjectId === "python" ? "# Write your solution here\n" : "-- Write solution here\n"),
-      language: targetLesson.language || (subjectId === "python" ? "python" : "sql"),
+      language: targetLesson.language || getLanguage(subjectId),
     };
-  } else if ((subjectId === "sql" || subjectId === "python") && session && session.questions.length > 0) {
+  } else if (session && session.questions.length > 0) {
+    // Priority 2: Shuffled session question (works for ALL subjects)
     const qIndex = (lessonNum - 1) % session.questions.length;
     currentQuestion = session.questions[qIndex];
   } else {
+    // Priority 3: Fallback to curriculumData static challenges
     currentQuestion = getChallenge(subjectId, moduleId, lessonId);
   }
 
@@ -89,14 +97,14 @@ export default function CoursePlayerPage({
           hints={currentQuestion?.hints}
           questionIndex={Math.min(lessonNum, 40)}
           totalQuestions={40}
-          onShuffleNewSession={subjectId === "sql" || subjectId === "python" ? handleShuffleNewSession : undefined}
+          onShuffleNewSession={handleShuffleNewSession}
         />
       </div>
 
       {/* Right Pane: Code Editor & HackerRank Test Cases (50% desktop) */}
       <div className="w-full md:w-1/2 h-1/2 md:h-full">
         <CodeEditorPanel
-          language={currentQuestion?.language || (subjectId === "python" ? "python" : "sql")}
+          language={currentQuestion?.language || getLanguage(subjectId)}
           initialCode={currentQuestion?.initialCode || (subjectId === "python" ? "# Write your solution here\n" : "-- Write your solution here\n")}
           points={currentQuestion?.points || 30}
           subjectId={subjectId}

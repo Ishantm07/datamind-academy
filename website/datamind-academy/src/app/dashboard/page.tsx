@@ -6,6 +6,7 @@ import { SUBJECTS } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getSubjectProgress, UserProgressState, StoredCertificate } from "@/lib/progressStore";
 
 type UserData = { name: string; email: string; xp: number; streak: number; level: number };
 
@@ -25,22 +26,23 @@ function useUser() {
   return user;
 }
 
-// Default fallback while loading
 const DEFAULT_USER = { name: "Learner", xp: 0, streak: 0, level: 1 };
 
-const ACTIVE_COURSES = [
-  { subjectId: "python", progress: 45, currentLesson: "Writing Your First Function", moduleNum: 3, lessonNum: 2 },
-  { subjectId: "sql", progress: 72, currentLesson: "Window Functions: LAG & LEAD", moduleNum: 5, lessonNum: 3 },
-  { subjectId: "ml", progress: 12, currentLesson: "What is Machine Learning?", moduleNum: 1, lessonNum: 2 },
-];
+const SUBJECT_ICONS: Record<string, string> = {
+  sql: "🗄️",
+  python: "🐍",
+  powerbi: "📊",
+  ml: "🤖",
+  ai: "🧠",
+};
 
-const RECENT_ACTIVITY = [
-  { action: "Completed", item: "SQL: Aggregate Functions", time: "2 hours ago", icon: "✅" },
-  { action: "Started", item: "Python: Functions Module", time: "5 hours ago", icon: "▶️" },
-  { action: "Earned Badge", item: "SQL Streak Master (7 days)", time: "1 day ago", icon: "🏆" },
-  { action: "Scored 95%", item: "SQL: JOINs Quiz", time: "1 day ago", icon: "📝" },
-  { action: "Completed Project", item: "E-Commerce Database Queries", time: "2 days ago", icon: "🚀" },
-];
+const SUBJECT_COLORS: Record<string, { gradient: string; border: string }> = {
+  sql: { gradient: "from-blue-500/20 to-cyan-500/5", border: "border-blue-500/20" },
+  python: { gradient: "from-green-500/20 to-emerald-500/5", border: "border-green-500/20" },
+  powerbi: { gradient: "from-yellow-500/20 to-orange-500/5", border: "border-yellow-500/20" },
+  ml: { gradient: "from-purple-500/20 to-violet-500/5", border: "border-purple-500/20" },
+  ai: { gradient: "from-red-500/20 to-rose-500/5", border: "border-red-500/20" },
+};
 
 const ACHIEVEMENTS = [
   { icon: "🔥", title: "7-Day Streak", description: "Learning every day for a week" },
@@ -53,6 +55,49 @@ export default function DashboardPage() {
   const user = useUser();
   const USER = user || DEFAULT_USER;
 
+  // Read real progress from localStorage for all subjects
+  const [subjectProgress, setSubjectProgress] = useState<Record<string, UserProgressState>>({});
+  const [certificates, setCertificates] = useState<StoredCertificate[]>([]);
+  const [totalLessons, setTotalLessons] = useState(0);
+
+  useEffect(() => {
+    const progress: Record<string, UserProgressState> = {};
+    const subjectIds = ["sql", "python", "powerbi", "ml", "ai"];
+    let total = 0;
+
+    subjectIds.forEach((sid) => {
+      const p = getSubjectProgress(sid);
+      progress[sid] = p;
+      total += p.completedQuestionIds.length;
+    });
+
+    setSubjectProgress(progress);
+    setTotalLessons(total);
+
+    // Load certificates
+    try {
+      const certsStr = localStorage.getItem("datamind_certificates");
+      if (certsStr) {
+        setCertificates(JSON.parse(certsStr));
+      }
+    } catch (e) {}
+  }, []);
+
+  // Build active courses from real progress
+  const activeCourses = SUBJECTS.map((subject) => {
+    const prog = subjectProgress[subject.id];
+    const completed = prog?.completedQuestionIds?.length || 0;
+    const progressPct = Math.min(Math.round((completed / 40) * 100), 100);
+    return {
+      subjectId: subject.id,
+      title: subject.title,
+      icon: SUBJECT_ICONS[subject.id] || "📚",
+      progress: progressPct,
+      completed,
+      isCompleted: prog?.isCompleted || false,
+    };
+  });
+
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -63,6 +108,7 @@ export default function DashboardPage() {
       </div>
     );
   }
+
   return (
     <div className="min-h-screen">
       {/* Top bar */}
@@ -98,7 +144,7 @@ export default function DashboardPage() {
             Welcome back, {USER.name} 👋
           </h1>
           <p className="text-muted-foreground">
-            You&apos;re on a <span className="text-amber-400 font-bold">🔥 {USER.streak}-day streak</span>! Keep going to unlock the Streak Master badge.
+            You&apos;ve completed <span className="text-indigo-400 font-bold">{totalLessons} questions</span> across all subjects. Keep pushing!
           </p>
         </motion.div>
 
@@ -112,8 +158,8 @@ export default function DashboardPage() {
           {[
             { label: "Total XP", value: `${USER.xp}`, icon: "⚡", gradient: "from-amber-500/20 to-orange-500/5" },
             { label: "Day Streak", value: `${USER.streak}`, icon: "🔥", gradient: "from-red-500/20 to-rose-500/5" },
-            { label: "Level", value: `${USER.level}`, icon: "📈", gradient: "from-emerald-500/20 to-green-500/5" },
-            { label: "Lessons Done", value: "34", icon: "✅", gradient: "from-blue-500/20 to-cyan-500/5" },
+            { label: "Certificates", value: `${certificates.length}`, icon: "🏆", gradient: "from-emerald-500/20 to-green-500/5" },
+            { label: "Questions Done", value: `${totalLessons}`, icon: "✅", gradient: "from-blue-500/20 to-cyan-500/5" },
           ].map((stat, i) => (
             <motion.div
               key={stat.label}
@@ -132,7 +178,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left: Active Courses (2/3 width) */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Continue Learning */}
+            {/* Continue Learning — Real Progress */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -140,30 +186,46 @@ export default function DashboardPage() {
             >
               <h2 className="text-lg font-bold text-white mb-4">Continue Learning</h2>
               <div className="space-y-3">
-                {ACTIVE_COURSES.map((course) => {
-                  const subject = SUBJECTS.find((s) => s.id === course.subjectId)!;
+                {activeCourses.map((course) => {
+                  const colors = SUBJECT_COLORS[course.subjectId] || SUBJECT_COLORS.sql;
+                  // Determine which lesson to resume from
+                  const nextLesson = Math.min(course.completed + 1, 40);
                   return (
                     <Link
                       key={course.subjectId}
-                      href={`/learn/${course.subjectId}/m${course.moduleNum}/lesson-${course.lessonNum}`}
-                      className="glass-card rounded-2xl p-5 flex items-center gap-5 group hover:bg-white/[0.06] transition-all"
+                      href={`/learn/${course.subjectId}/m1/lesson-${nextLesson}`}
+                      className={`glass-card rounded-2xl p-5 flex items-center gap-5 group hover:bg-white/[0.06] transition-all ${colors.border} border`}
                     >
-                      <div className="text-4xl">{subject.icon}</div>
+                      <div className="text-4xl">{course.icon}</div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-bold text-white mb-1">{subject.title}</div>
+                        <div className="text-sm font-bold text-white mb-1">{course.title}</div>
                         <div className="text-xs text-muted-foreground mb-3 truncate">
-                          Next: {course.currentLesson}
+                          {course.isCompleted
+                            ? "✅ All 40 questions completed — Certificate earned!"
+                            : `${course.completed}/40 questions completed`}
                         </div>
                         <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all"
+                            className={cn(
+                              "h-full rounded-full transition-all",
+                              course.isCompleted
+                                ? "bg-gradient-to-r from-emerald-500 to-green-400"
+                                : "bg-gradient-to-r from-indigo-500 to-purple-500"
+                            )}
                             style={{ width: `${course.progress}%` }}
                           />
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm font-bold text-indigo-400">{course.progress}%</div>
-                        <div className="text-[10px] text-muted-foreground uppercase mt-1">complete</div>
+                        <div className={cn(
+                          "text-sm font-bold",
+                          course.isCompleted ? "text-emerald-400" : "text-indigo-400"
+                        )}>
+                          {course.progress}%
+                        </div>
+                        <div className="text-[10px] text-muted-foreground uppercase mt-1">
+                          {course.isCompleted ? "done" : "complete"}
+                        </div>
                       </div>
                       <span className="text-muted-foreground group-hover:text-indigo-400 group-hover:translate-x-1 transition-all">
                         →
@@ -192,7 +254,7 @@ export default function DashboardPage() {
               </div>
             </motion.div>
 
-            {/* Earned Certificates */}
+            {/* Earned Certificates — Dynamic from localStorage */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -202,78 +264,101 @@ export default function DashboardPage() {
                 <h2 className="text-lg font-bold text-white">Earned Certificates</h2>
                 <span className="text-xs text-indigo-400 font-semibold">Verified Credentials</span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Link
-                  href="/certificate/DM-SQL-CERTIFIED"
-                  className="glass-card rounded-2xl p-5 border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-yellow-500/5 to-transparent hover:border-amber-500/40 transition-all group"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-xl">
-                      🏆
-                    </div>
-                    <div>
-                      <div className="text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
-                        SQL Mastery & Engineering
-                      </div>
-                      <div className="text-[11px] text-muted-foreground font-mono">40/40 Questions Completed</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between text-xs pt-2 border-t border-white/5">
-                    <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                      <span>✓</span> Verified Digital Credential
-                    </span>
-                    <span className="text-indigo-400 font-bold group-hover:translate-x-1 transition-transform">
-                      View →
-                    </span>
-                  </div>
-                </Link>
 
-                <Link
-                  href="/certificate/DM-PYTHON-CERTIFIED"
-                  className="glass-card rounded-2xl p-5 border border-indigo-500/20 bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent hover:border-indigo-500/40 transition-all group"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-xl">
-                      🐍
-                    </div>
-                    <div>
-                      <div className="text-sm font-bold text-white group-hover:text-indigo-300 transition-colors">
-                        Python Core & Data Engineering
-                      </div>
-                      <div className="text-[11px] text-muted-foreground font-mono">40/40 Questions Completed</div>
-                    </div>
+              {certificates.length === 0 ? (
+                <div className="glass-card rounded-2xl p-8 text-center">
+                  <div className="text-4xl mb-3">🎓</div>
+                  <div className="text-sm font-bold text-white mb-1">No Certificates Yet</div>
+                  <div className="text-xs text-muted-foreground">
+                    Complete 40 questions in any subject to earn your certificate!
                   </div>
-                  <div className="flex items-center justify-between text-xs pt-2 border-t border-white/5">
-                    <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                      <span>✓</span> Verified Digital Credential
-                    </span>
-                    <span className="text-indigo-400 font-bold group-hover:translate-x-1 transition-transform">
-                      View →
-                    </span>
-                  </div>
-                </Link>
-              </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {certificates.map((cert) => {
+                    const colors = SUBJECT_COLORS[cert.subjectId] || SUBJECT_COLORS.sql;
+                    const icon = SUBJECT_ICONS[cert.subjectId] || "🏆";
+                    return (
+                      <Link
+                        key={cert.certificateId}
+                        href={`/certificate/${cert.certificateId}`}
+                        className={`glass-card rounded-2xl p-5 ${colors.border} border bg-gradient-to-br ${colors.gradient} hover:opacity-90 transition-all group`}
+                      >
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className={`w-10 h-10 rounded-xl ${colors.border} border bg-white/5 flex items-center justify-center text-xl`}>
+                            {icon}
+                          </div>
+                          <div>
+                            <div className="text-sm font-bold text-white group-hover:text-indigo-300 transition-colors">
+                              {cert.subjectTitle}
+                            </div>
+                            <div className="text-[11px] text-muted-foreground font-mono">
+                              {cert.totalQuestions}/{cert.totalQuestions} Questions • {cert.score} XP
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between text-xs pt-2 border-t border-white/5">
+                          <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                            <span>✓</span> Issued {cert.issuedAt}
+                          </span>
+                          <span className="text-indigo-400 font-bold group-hover:translate-x-1 transition-transform">
+                            View →
+                          </span>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
             </motion.div>
           </div>
 
-          {/* Right: Activity Feed (1/3 width) */}
+          {/* Right: Subject Progress Summary (1/3 width) */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
           >
-            <h2 className="text-lg font-bold text-white mb-4">Recent Activity</h2>
+            <h2 className="text-lg font-bold text-white mb-4">Subject Progress</h2>
             <div className="glass-card rounded-2xl p-5 space-y-4">
-              {RECENT_ACTIVITY.map((activity, i) => (
-                <div key={i} className={cn("flex items-start gap-3", i < RECENT_ACTIVITY.length - 1 && "pb-4 border-b border-white/5")}>
-                  <span className="text-lg mt-0.5">{activity.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold text-white">{activity.action}</div>
-                    <div className="text-xs text-muted-foreground truncate">{activity.item}</div>
-                    <div className="text-[10px] text-muted-foreground/60 mt-1">{activity.time}</div>
+              {activeCourses.map((course, i) => {
+                const colors = SUBJECT_COLORS[course.subjectId] || SUBJECT_COLORS.sql;
+                return (
+                  <div
+                    key={course.subjectId}
+                    className={cn(
+                      "flex items-center gap-3",
+                      i < activeCourses.length - 1 && "pb-4 border-b border-white/5"
+                    )}
+                  >
+                    <span className="text-2xl">{course.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="text-xs font-semibold text-white">{course.title}</div>
+                        <div className={cn(
+                          "text-[10px] font-bold",
+                          course.isCompleted ? "text-emerald-400" : "text-muted-foreground"
+                        )}>
+                          {course.completed}/40
+                        </div>
+                      </div>
+                      <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all",
+                            course.isCompleted
+                              ? "bg-emerald-500"
+                              : course.progress > 0
+                              ? "bg-indigo-500"
+                              : "bg-white/10"
+                          )}
+                          style={{ width: `${course.progress}%` }}
+                        />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </motion.div>
         </div>
