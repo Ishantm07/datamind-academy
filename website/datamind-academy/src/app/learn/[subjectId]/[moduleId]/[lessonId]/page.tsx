@@ -100,6 +100,8 @@ export default function CoursePlayerPage({
           initialCode={currentQuestion?.initialCode || (subjectId === "python" ? "# Write your solution here\n" : "-- Write your solution here\n")}
           points={currentQuestion?.points || 30}
           subjectId={subjectId}
+          moduleId={moduleId}
+          lessonId={lessonId}
           questionId={currentQuestion?.id || lessonId}
           questionIndex={Math.min(lessonNum, 40)}
           totalQuestions={40}

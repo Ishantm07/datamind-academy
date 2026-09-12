@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Editor from "@monaco-editor/react";
-import { Play, CheckCircle2, XCircle, Terminal, Check, Award, Trophy } from "lucide-react";
+import { Play, CheckCircle2, XCircle, Terminal, Check, Award, Trophy, SkipForward, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { recordQuestionCompletion } from "@/lib/progressStore";
 
@@ -12,6 +13,8 @@ interface CodeEditorPanelProps {
   language?: string;
   points?: number;
   subjectId?: string;
+  moduleId?: string;
+  lessonId?: string;
   questionId?: string;
   questionIndex?: number;
   totalQuestions?: number;
@@ -22,23 +25,78 @@ export default function CodeEditorPanel({
   language = "sql",
   points = 30,
   subjectId = "sql",
+  moduleId = "m1",
+  lessonId = "lesson-1",
   questionId = "q-1",
   questionIndex = 1,
   totalQuestions = 40,
 }: CodeEditorPanelProps) {
+  const router = useRouter();
   const [code, setCode] = useState(initialCode);
   const [activeTab, setActiveTab] = useState<"output" | "testcases">("output");
   const [isRunning, setIsRunning] = useState(false);
   const [earnedCertificateId, setEarnedCertificateId] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [testResults, setTestResults] = useState<{
     submitted: boolean;
     allPassed: boolean;
     cases: { name: string; status: "PASSED" | "FAILED"; message: string }[];
   } | null>(null);
 
+  // Compute next lesson URL
+  const currentLessonNum = parseInt(lessonId.replace(/\D/g, "") || "1", 10);
+  const nextLessonId = `lesson-${currentLessonNum + 1}`;
+  const nextUrl = `/learn/${subjectId}/${moduleId}/${nextLessonId}`;
+  const isLastQuestion = questionIndex >= totalQuestions;
+
+  // Navigate to next question
+  const goToNextQuestion = useCallback(() => {
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    setCountdown(null);
+    if (!isLastQuestion) {
+      router.push(nextUrl);
+    }
+  }, [isLastQuestion, nextUrl, router]);
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (countdown !== null && countdown > 0) {
+      countdownIntervalRef.current = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev !== null && prev <= 1) {
+            return 0;
+          }
+          return prev !== null ? prev - 1 : null;
+        });
+      }, 1000);
+
+      return () => {
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+        }
+      };
+    } else if (countdown === 0) {
+      goToNextQuestion();
+    }
+  }, [countdown, goToNextQuestion]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+      }
+    };
+  }, []);
+
   const handleRunCode = () => {
     setIsRunning(true);
     setTestResults(null);
+    setCountdown(null);
 
     setTimeout(() => {
       setIsRunning(false);
@@ -63,12 +121,24 @@ export default function CodeEditorPanel({
         }
       } catch (e) {}
 
-      // If user is on question 40 or finishes 40, issue certificate
       const result = recordQuestionCompletion(subjectId, questionId, points, userName);
       if (result.certificateId || questionIndex >= 40) {
         setEarnedCertificateId(result.certificateId || `DM-${subjectId.toUpperCase()}-COMPLETION`);
       }
+
+      // Start 5-second countdown to auto-advance (only if not the last question)
+      if (questionIndex < totalQuestions) {
+        setCountdown(5);
+      }
     }, 900);
+  };
+
+  const cancelCountdown = () => {
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    setCountdown(null);
   };
 
   return (
@@ -97,7 +167,7 @@ export default function CodeEditorPanel({
 
           <button
             onClick={handleRunCode}
-            disabled={isRunning}
+            disabled={isRunning || countdown !== null}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-90 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50 shadow-lg shadow-emerald-500/20"
           >
             <Play className="w-3.5 h-3.5 fill-current" />
@@ -203,6 +273,40 @@ All constraints satisfied.`}
                       >
                         Claim Certificate 🎓
                       </Link>
+                    </div>
+                  )}
+
+                  {/* Auto-Advance Countdown Timer */}
+                  {countdown !== null && countdown > 0 && !isLastQuestion && (
+                    <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/30 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-indigo-400 font-bold text-sm">
+                          <Timer className="w-4 h-4 animate-pulse" />
+                          <span>Next question in {countdown}...</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={cancelCountdown}
+                            className="px-3 py-1.5 text-xs font-semibold text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-all border border-white/10"
+                          >
+                            Stay Here
+                          </button>
+                          <button
+                            onClick={goToNextQuestion}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-all shadow-lg shadow-indigo-500/20"
+                          >
+                            <SkipForward className="w-3.5 h-3.5" />
+                            Skip →
+                          </button>
+                        </div>
+                      </div>
+                      {/* Progress bar */}
+                      <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-indigo-500 to-cyan-400 rounded-full transition-all duration-1000 ease-linear"
+                          style={{ width: `${((5 - countdown) / 5) * 100}%` }}
+                        />
+                      </div>
                     </div>
                   )}
 
